@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JSONPlaceholder Table Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8fafc;
+            margin: 0;
+            padding: 20px;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        h1 {
+            color: #0f172a;
+            margin-bottom: 10px;
+        }
+
+        .status-bar {
+            padding: 10px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            background: #3b82f6;
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>Server-Side Filtering Demo</h1>
+            <p>Os dados abaixo são buscados dinamicamente do <strong>JSONPlaceholder API</strong>.</p>
+        </header>
+
+        <div class="status-bar">
+            <span>Status da API: <strong>Online</strong></span>
+            <span id="loadingStatus">Carregando dados...</span>
+        </div>
+
+        <wc-table id="placeholderTable" server-side>
+            <wc-table-row col="name" type="uppercase"></wc-table-row>
+            <wc-table-row col="website" type="link"></wc-table-row>
+
+            <h2 slot="toolbar-left" style="margin:0">Users (API)</h2>
+
+            <template slot="right-actions">
+                <button data-action="view" title="Ver Detalhes">🔍</button>
+            </template>
+        </wc-table>
+    </div>
+
+    <script type="module" src="../src/wc-table.js"></script>
+    <script type="module">
+        import { Config } from '../src/config.js';
+
+        // Custom Link Plugin
+        Config.registerPlugin('link', class {
+            static render(value) {
+                return `<a href="http://${value}" target="_blank" style="color: #3b82f6; text-decoration: none;">${value}</a>`;
+            }
+        });
+
+        // Custom Upper Plugin
+        Config.registerPlugin('uppercase', class {
+            static render(value) {
+                return String(value).toUpperCase();
+            }
+        });
+
+        const table = document.getElementById('placeholderTable');
+        const loadingStatus = document.getElementById('loadingStatus');
+
+        // Fetch function
+        async function fetchUsers(query = '') {
+            loadingStatus.textContent = 'Buscando da API...';
+            const url = query
+                ? `https://jsonplaceholder.typicode.com/users?q=${query}`
+                : `https://jsonplaceholder.typicode.com/users`;
+
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+
+                // Formatar dados para a tabela
+                const formattedData = data.map(user => ({
+                    id: user.id,
+                    name: user.name,
+                    username: user.username,
+                    email: user.email,
+                    phone: user.phone,
+                    website: user.website,
+                    company: user.company.name
+                }));
+
+                table.data = formattedData;
+                loadingStatus.textContent = `${formattedData.length} usuários encontrados.`;
+            } catch (err) {
+                loadingStatus.textContent = 'Erro ao buscar dados.';
+                console.error(err);
+            }
+        }
+
+        // Debounce helper
+        let filterTimeout;
+        table.addEventListener('before-filter', (e) => {
+            const query = e.detail.query;
+            clearTimeout(filterTimeout);
+            filterTimeout = setTimeout(() => {
+                fetchUsers(query);
+            }, 500); // 500ms delay for API calls
+        });
+
+        table.addEventListener('action-click', (e) => {
+            console.log(`Usuário: ${e.detail.item.name}\nEmpresa: ${e.detail.item.company}`);
+        });
+
+        // Initial fetch
+        fetchUsers();
+    </script>
+</body>
+
+</html>

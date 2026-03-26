@@ -1,0 +1,31 @@
+{
+  "name": "wc-tables-kit",
+  "version": "1.0.0",
+  "description": "A flexible, slot-based, and modular vanilla web component table.",
+  "type": "module",
+  "main": "src/wc-table.js",
+  "module": "src/wc-table.js",
+  "files": [
+    "src/"
+  ],
+  "keywords": [
+    "web-components",
+    "table",
+    "native",
+    "vanilla-js",
+    "data-grid",
+    "modular",
+    "plugins"
+  ],
+  "author": "Ulisses Mantovani",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/minasvisual/wc-tables"
+  },
+  "scripts": {
+    "test": "vitest --exclude tests/e2e/**",
+    "dev": "http-server -c-1 -o /index.html",
+    "test:e2e": "playwright test"
+  }
+}

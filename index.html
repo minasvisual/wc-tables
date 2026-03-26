@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo wc-table | Native Web Components</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f0f4f8;
+            margin: 0;
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            max-width: 800px;
+        }
+
+        h1 {
+            color: #1e293b;
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        p {
+            color: #64748b;
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1000px;
+        }
+
+        footer {
+            margin-top: 50px;
+            color: #94a3b8;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <h1>Web Component de Tabela</h1>
+        <p>Uma tabela moderna construída com Web Components nativos, sem dependências externas. Possui filtros locais e
+            ordenação dinâmica.</p>
+    </header>
+
+    <div class="container">
+        <div id="eventLog"
+            style="background: #1e293b; color: #10b981; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 0.8rem; height: 100px; overflow-y: auto; margin-bottom: 20px;">
+            > Aguardando eventos...
+        </div>
+
+        <div id="selectionStatus" style="margin-bottom: 15px; color: #3b82f6; font-weight: 600;">
+            Itens selecionados: 0
+        </div>
+
+        <!-- Uso do Componente -->
+        <wc-table id="minhaTabela">
+            <!-- Configuração de Colunas (Plugins) -->
+            <wc-table-row col="nome" type="uppercase"></wc-table-row>
+            <wc-table-row col="data_criacao" type="date" format="pt-BR"></wc-table-row>
+            <wc-table-row col="salario" type="currency" format="BRL"></wc-table-row>
+            <wc-table-row col="status" type="badge"></wc-table-row>
+
+            <!-- Template de Ações -->
+            <template slot="right-actions">
+                <button data-action="edit" title="Editar">✏️</button>
+                <button data-action="delete" class="delete-btn" title="Excluir">🗑️</button>
+            </template>
+
+            <div slot="before"
+                style="margin-bottom: 1rem; padding: 10px; border-left: 4px solid #3b82f6; background: #eff6ff; color: #1e40af;">
+                <strong>Dica:</strong> Use os slots para adicionar conteúdo customizado. Agora suportamos ações por
+                linha!
+            </div>
+
+            <h2 slot="toolbar-left" style="margin: 0; font-size: 1.25rem;">Lista de Usuários</h2>
+
+            <div slot="toolbar-right">
+                <button id="exportButton"
+                    style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
+                    Exportar Seleção
+                </button>
+            </div>
+
+            <div slot="after" style="margin-top: 1rem; font-size: 0.85rem; color: #64748b; text-align: center;">
+                © 2026 Web Components Lab
+            </div>
+        </wc-table>
+    </div>
+
+    <footer>
+        Desenvolvido com Vanilla JS e Native Web Components
+    </footer>
+
+    <script type="module" src="./src/wc-table.js"></script>
+    <script type="module">
+        import { Config } from './src/config.js';
+
+        // 1. Registro de um Custom Plugin
+        class UpperPlugin {
+            static render(value) {
+                return String(value).toUpperCase();
+            }
+        }
+        Config.registerPlugin('uppercase', UpperPlugin);
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const tabela = document.getElementById('minhaTabela');
+            const eventLog = document.getElementById('eventLog');
+            const selectionStatus = document.getElementById('selectionStatus');
+            const exportButton = document.getElementById('exportButton');
+            let lastSelectedRows = [];
+
+            const logEvent = (name, detail = '') => {
+                const p = document.createElement('div');
+                p.textContent = `> Event: ${name} ${detail ? JSON.stringify(detail) : ''}`;
+                eventLog.prepend(p);
+            };
+
+            // Escutando eventos customizados
+            tabela.addEventListener('before-mount', () => logEvent('before-mount'));
+            tabela.addEventListener('after-mount', () => logEvent('after-mount'));
+
+            tabela.addEventListener('action-click', (e) => {
+                const { action, item } = e.detail;
+                logEvent('action-click', `Ação: ${action} no item ID: ${item.id}`);
+                console.log(`Ação: ${action.toUpperCase()}\nItem: ${item.nome}\nID: ${item.id}`);
+            });
+
+            tabela.addEventListener('before-filter', (e) => {
+                logEvent('before-filter', e.detail.query);
+            });
+
+            tabela.addEventListener('after-filter', (e) => {
+                logEvent('after-filter', `${e.detail.results.length} resultados`);
+            });
+
+            tabela.addEventListener('row-selected', (e) => {
+                const { item, isSelected, selectedRows } = e.detail;
+                lastSelectedRows = selectedRows;
+                selectionStatus.textContent = `Itens selecionados: ${selectedRows.length}`;
+                logEvent('row-selected', `${item.nome} (${isSelected ? 'Selecionado' : 'Desmarcado'}). Total: ${selectedRows.length}`);
+            });
+
+            tabela.addEventListener('selection-changed', (e) => {
+                const { selectedRows, allSelected } = e.detail;
+                lastSelectedRows = selectedRows;
+                selectionStatus.textContent = `Itens selecionados: ${selectedRows.length}`;
+                logEvent('selection-changed', `${allSelected ? 'Todos selecionados' : 'Todos desmarcados'}. Total: ${selectedRows.length}`);
+            });
+
+            exportButton.addEventListener('click', () => {
+                if (lastSelectedRows.length === 0) {
+                    alert('Nenhum item selecionado para exportar.');
+                } else {
+                    alert(`Exportando ${lastSelectedRows.length} itens: \n` + lastSelectedRows.map(i => i.nome).join(', '));
+                }
+            });
+
+            // Dados de exemplo atualizados com novos campos para plugins
+            const data = [
+                { id: 1, nome: 'João Silva', email: 'joao@example.com', cargo: 'Desenvolvedor', departamento: 'Engenharia', data_criacao: '2023-01-15', salario: 8500, status: 'Ativo' },
+                { id: 2, nome: 'Maria Santos', email: 'maria@example.com', cargo: 'Designer UI', departamento: 'Produto', data_criacao: '2023-02-20', salario: 7200, status: 'Ativo' },
+                { id: 3, nome: 'Pedro Oliveira', email: 'pedro@example.com', cargo: 'Gerente de Contas', departamento: 'Vendas', data_criacao: '2022-11-10', salario: 6500, status: 'Pendente' },
+                { id: 4, nome: 'Ana Costa', email: 'ana@example.com', cargo: 'Analista de Marketing', departamento: 'Marketing', data_criacao: '2023-05-05', salario: 5800, status: 'Inativo' },
+                { id: 5, nome: 'Lucas Rafael', email: 'lucas@example.com', cargo: 'Desenvolvedor Front-end', departamento: 'Engenharia', data_criacao: '2023-03-12', salario: 8200, status: 'Ativo' },
+                { id: 6, nome: 'Julia Pereira', email: 'julia@example.com', cargo: 'Product Owner', departamento: 'Produto', data_criacao: '2022-09-30', salario: 9500, status: 'Ativo' },
+                { id: 7, nome: 'Carlos Eduardo', email: 'carlos@example.com', cargo: 'Executivo de Vendas', departamento: 'Vendas', data_criacao: '2023-04-18', salario: 6200, status: 'Pendente' },
+                { id: 8, nome: 'Beatriz Matos', email: 'beatriz@example.com', cargo: 'Social Media', departamento: 'Marketing', data_criacao: '2023-06-25', salario: 5400, status: 'Ativo' }
+            ];
+
+            // Atribuindo os dados ao componente
+            tabela.data = data;
+        });
+    </script>
+</body>
+
+</html>
