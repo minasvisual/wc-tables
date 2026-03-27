@@ -2,7 +2,9 @@
  * WcTableRow
  * Lightweight component for declarative column configuration.
  */
-export class WcTableRow extends HTMLElement {
+const _HTMLElement = typeof HTMLElement !== 'undefined' ? HTMLElement : class {};
+
+export class WcTableRow extends _HTMLElement {
     constructor() {
         super();
     }
@@ -17,6 +19,6 @@ export class WcTableRow extends HTMLElement {
     }
 }
 
-if (!customElements.get('wc-table-row')) {
+if (typeof customElements !== 'undefined' && !customElements.get('wc-table-row')) {
     customElements.define('wc-table-row', WcTableRow);
 }

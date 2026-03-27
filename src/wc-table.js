@@ -10,7 +10,9 @@ import { ButtonPlugin } from './plugins/button.js';
 import { ExpressionPlugin } from './plugins/expression.js';
 import './wc-table-row.js';
 
-class WcTable extends HTMLElement {
+const _HTMLElement = typeof HTMLElement !== 'undefined' ? HTMLElement : class {};
+
+class WcTable extends _HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
@@ -430,4 +432,6 @@ class WcTable extends HTMLElement {
     }
 }
 
-customElements.define('wc-table', WcTable);
+if (typeof customElements !== 'undefined' && !customElements.get('wc-table')) {
+    customElements.define('wc-table', WcTable);
+}

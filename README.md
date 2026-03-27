@@ -150,7 +150,7 @@ npm install wc-tables-kit
 
 ```jsx
 import 'wc-tables-kit';
-import { WcTable, WcTableRow } from 'wc-tables-kit/src/react.js';
+import { WcTable, WcTableRow } from 'wc-tables-kit/react';
 
 const MyComponent = () => {
     const data = [

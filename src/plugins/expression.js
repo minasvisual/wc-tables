@@ -2,11 +2,11 @@ export class ExpressionPlugin {
     static render(value, config = {}, item = {}) {
         const template = config.expr || '';
         if (!template) return value;
-        
-        // Simple template replacement ${field}
+
+        // Template replacement supporting dot notation: ${address.city}
         return template.replace(/\${(.*?)}/g, (_, key) => {
-            const k = key.trim();
-            return item[k] !== undefined ? item[k] : '';
+            const val = key.trim().split('.').reduce((obj, k) => (obj != null ? obj[k] : undefined), item);
+            return val !== undefined && val !== null ? val : '';
         });
     }
 }

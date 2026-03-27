@@ -229,7 +229,7 @@ The component then only renders what's in `.data` and emits events for the host 
 
 ---
 
-## 9. React / Next.js Adapter — `src/react.js`
+## 9. React / Next.js Adapter — `src/react.js` (`wc-tables-kit/react`)
 
 This file wraps `<wc-table>` and `<wc-table-row>` as React components.
 
@@ -249,7 +249,7 @@ catch { _React = globalThis.React; }
 ```jsx
 'use client';
 import 'wc-tables-kit'; // registers the custom elements
-import { WcTable, WcTableRow } from 'wc-tables-kit/src/react.js';
+import { WcTable, WcTableRow } from 'wc-tables-kit/react';
 
 export default function Page() {
     const data = [{ id: 1, name: 'Alice', status: 'active' }];
@@ -272,7 +272,7 @@ export default function Page() {
 <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 <!-- 3. Web component + adapter -->
 <script type="module" src="./src/wc-table.js"></script>
-<script type="module" src="./src/react.js"></script>
+<script type="module" src="./src/react.js"></script> <!-- or window.WcTableReact via CDN -->
 <!-- 4. Your app (Babel transpiles JSX, adapter is already loaded) -->
 <script type="text/babel">
     function initApp() {
