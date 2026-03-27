@@ -216,6 +216,45 @@ tr:hover td {
     color: #ef4444;
 }
 
+.wc-table-link {
+    color: #3b82f6;
+    text-decoration: none;
+    font-weight: 500;
+}
+.wc-table-link:hover {
+    text-decoration: underline;
+}
+
+.wc-table-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+.wc-table-tag {
+    background: #f1f5f9;
+    color: #475569;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid #e2e8f0;
+}
+
+.wc-table-btn {
+    padding: 6px 12px;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+.wc-table-btn:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+}
+
 /* Animations */
 @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }

@@ -1,99 +1,102 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="en">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Demo wc-table | Native Web Components</title>
+    <title>wc-table Demo | Native Web Components</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         body {
-            background-color: #f0f4f8;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8fafc;
             margin: 0;
-            padding: 40px;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
+            padding: 20px;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
         }
 
         header {
             text-align: center;
             margin-bottom: 40px;
-            max-width: 800px;
         }
 
         h1 {
-            color: #1e293b;
-            font-size: 2.5rem;
+            color: #0f172a;
             margin-bottom: 10px;
-            font-weight: 600;
         }
 
-        p {
-            color: #64748b;
-            font-size: 1.1rem;
-            line-height: 1.6;
+        .status-bar {
+            padding: 10px;
+            background: #fff;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        .container {
-            width: 100%;
-            max-width: 1000px;
-        }
-
-        footer {
-            margin-top: 50px;
-            color: #94a3b8;
-            font-size: 0.9rem;
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            background: #3b82f6;
+            color: white;
         }
     </style>
 </head>
 
 <body>
-
-    <header>
-        <h1>Web Component de Tabela</h1>
-        <p>Uma tabela moderna construída com Web Components nativos, sem dependências externas. Possui filtros locais e
-            ordenação dinâmica.</p>
-    </header>
-
     <div class="container">
+        <wc-nav></wc-nav>
+
+        <header>
+            <h1>Web Component Table</h1>
+            <p>A modern table built with native Web Components, zero dependencies. Includes local filtering and dynamic sorting.</p>
+        </header>
+
         <div id="eventLog"
             style="background: #1e293b; color: #10b981; padding: 10px; border-radius: 8px; font-family: monospace; font-size: 0.8rem; height: 100px; overflow-y: auto; margin-bottom: 20px;">
-            > Aguardando eventos...
+            > Waiting for events...
         </div>
 
         <div id="selectionStatus" style="margin-bottom: 15px; color: #3b82f6; font-weight: 600;">
-            Itens selecionados: 0
+            Selected items: 0
         </div>
 
-        <!-- Uso do Componente -->
-        <wc-table id="minhaTabela">
-            <!-- Configuração de Colunas (Plugins) -->
-            <wc-table-row col="nome" type="uppercase"></wc-table-row>
-            <wc-table-row col="data_criacao" type="date" format="pt-BR"></wc-table-row>
-            <wc-table-row col="salario" type="currency" format="BRL"></wc-table-row>
+        <!-- Component Usage -->
+        <wc-table id="mainTable">
+            <!-- Column Configuration (Plugins) -->
+            <wc-table-row col="name" type="uppercase"></wc-table-row>
+            <wc-table-row col="created_at" type="date" format="en-US"></wc-table-row>
+            <wc-table-row col="salary" type="currency" format="USD"></wc-table-row>
             <wc-table-row col="status" type="badge"></wc-table-row>
 
-            <!-- Template de Ações -->
+            <!-- Actions Template -->
             <template slot="right-actions">
-                <button data-action="edit" title="Editar">✏️</button>
-                <button data-action="delete" class="delete-btn" title="Excluir">🗑️</button>
+                <button data-action="edit" title="Edit">✏️</button>
+                <button data-action="delete" class="delete-btn" title="Delete">🗑️</button>
             </template>
 
             <div slot="before"
                 style="margin-bottom: 1rem; padding: 10px; border-left: 4px solid #3b82f6; background: #eff6ff; color: #1e40af;">
-                <strong>Dica:</strong> Use os slots para adicionar conteúdo customizado. Agora suportamos ações por
-                linha!
+                <strong>Tip:</strong> Use slots to add custom content. Now supporting row-level actions!
             </div>
 
-            <h2 slot="toolbar-left" style="margin: 0; font-size: 1.25rem;">Lista de Usuários</h2>
+            <h2 slot="toolbar-left" style="margin: 0; font-size: 1.25rem;">User List</h2>
 
             <div slot="toolbar-right">
                 <button id="exportButton"
                     style="padding: 8px 16px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.9rem;">
-                    Exportar Seleção
+                    Export Selection
                 </button>
             </div>
 
@@ -104,14 +107,15 @@
     </div>
 
     <footer>
-        Desenvolvido com Vanilla JS e Native Web Components
+        Developed with Vanilla JS and Native Web Components
     </footer>
 
+    <script type="module" src="./examples/wc-nav.js"></script>
     <script type="module" src="./src/wc-table.js"></script>
     <script type="module">
         import { Config } from './src/config.js';
 
-        // 1. Registro de um Custom Plugin
+        // 1. Custom Plugin Registration
         class UpperPlugin {
             static render(value) {
                 return String(value).toUpperCase();
@@ -120,7 +124,7 @@
         Config.registerPlugin('uppercase', UpperPlugin);
 
         document.addEventListener('DOMContentLoaded', () => {
-            const tabela = document.getElementById('minhaTabela');
+            const table = document.getElementById('mainTable');
             const eventLog = document.getElementById('eventLog');
             const selectionStatus = document.getElementById('selectionStatus');
             const exportButton = document.getElementById('exportButton');
@@ -132,60 +136,61 @@
                 eventLog.prepend(p);
             };
 
-            // Escutando eventos customizados
-            tabela.addEventListener('before-mount', () => logEvent('before-mount'));
-            tabela.addEventListener('after-mount', () => logEvent('after-mount'));
+            // Listen for custom events
+            table.addEventListener('before-mount', () => logEvent('before-mount'));
+            table.addEventListener('after-mount', () => logEvent('after-mount'));
 
-            tabela.addEventListener('action-click', (e) => {
+            table.addEventListener('action-click', (e) => {
                 const { action, item } = e.detail;
-                logEvent('action-click', `Ação: ${action} no item ID: ${item.id}`);
-                console.log(`Ação: ${action.toUpperCase()}\nItem: ${item.nome}\nID: ${item.id}`);
+                logEvent('action-click', `Action: ${action} on item ID: ${item.id}`);
+                console.log(`Action: ${action.toUpperCase()}\nItem: ${item.name}\nID: ${item.id}`);
             });
 
-            tabela.addEventListener('before-filter', (e) => {
+            table.addEventListener('before-filter', (e) => {
                 logEvent('before-filter', e.detail.query);
             });
 
-            tabela.addEventListener('after-filter', (e) => {
-                logEvent('after-filter', `${e.detail.results.length} resultados`);
+            table.addEventListener('after-filter', (e) => {
+                logEvent('after-filter', `${e.detail.results.length} results`);
             });
 
-            tabela.addEventListener('row-selected', (e) => {
+            table.addEventListener('row-selected', (e) => {
                 const { item, isSelected, selectedRows } = e.detail;
                 lastSelectedRows = selectedRows;
-                selectionStatus.textContent = `Itens selecionados: ${selectedRows.length}`;
-                logEvent('row-selected', `${item.nome} (${isSelected ? 'Selecionado' : 'Desmarcado'}). Total: ${selectedRows.length}`);
+                selectionStatus.textContent = `Selected items: ${selectedRows.length}`;
+                logEvent('row-selected', `${item.name} (${isSelected ? 'Selected' : 'Deselected'}). Total: ${selectedRows.length}`);
             });
 
-            tabela.addEventListener('selection-changed', (e) => {
+            table.addEventListener('selection-changed', (e) => {
                 const { selectedRows, allSelected } = e.detail;
                 lastSelectedRows = selectedRows;
-                selectionStatus.textContent = `Itens selecionados: ${selectedRows.length}`;
-                logEvent('selection-changed', `${allSelected ? 'Todos selecionados' : 'Todos desmarcados'}. Total: ${selectedRows.length}`);
+                selectionStatus.textContent = `Selected items: ${selectedRows.length}`;
+                logEvent('selection-changed', `${allSelected ? 'All selected' : 'All deselected'}. Total: ${selectedRows.length}`);
             });
 
             exportButton.addEventListener('click', () => {
                 if (lastSelectedRows.length === 0) {
-                    alert('Nenhum item selecionado para exportar.');
+                    console.log('No items selected for export.');
                 } else {
-                    alert(`Exportando ${lastSelectedRows.length} itens: \n` + lastSelectedRows.map(i => i.nome).join(', '));
+                    console.log(`Exporting ${lastSelectedRows.length} items: \n` + lastSelectedRows.map(i => i.name).join(', '));
                 }
+                logEvent('selection-exported', `${lastSelectedRows.length} items exported.`);
             });
 
-            // Dados de exemplo atualizados com novos campos para plugins
+            // Sample data updated with new fields
             const data = [
-                { id: 1, nome: 'João Silva', email: 'joao@example.com', cargo: 'Desenvolvedor', departamento: 'Engenharia', data_criacao: '2023-01-15', salario: 8500, status: 'Ativo' },
-                { id: 2, nome: 'Maria Santos', email: 'maria@example.com', cargo: 'Designer UI', departamento: 'Produto', data_criacao: '2023-02-20', salario: 7200, status: 'Ativo' },
-                { id: 3, nome: 'Pedro Oliveira', email: 'pedro@example.com', cargo: 'Gerente de Contas', departamento: 'Vendas', data_criacao: '2022-11-10', salario: 6500, status: 'Pendente' },
-                { id: 4, nome: 'Ana Costa', email: 'ana@example.com', cargo: 'Analista de Marketing', departamento: 'Marketing', data_criacao: '2023-05-05', salario: 5800, status: 'Inativo' },
-                { id: 5, nome: 'Lucas Rafael', email: 'lucas@example.com', cargo: 'Desenvolvedor Front-end', departamento: 'Engenharia', data_criacao: '2023-03-12', salario: 8200, status: 'Ativo' },
-                { id: 6, nome: 'Julia Pereira', email: 'julia@example.com', cargo: 'Product Owner', departamento: 'Produto', data_criacao: '2022-09-30', salario: 9500, status: 'Ativo' },
-                { id: 7, nome: 'Carlos Eduardo', email: 'carlos@example.com', cargo: 'Executivo de Vendas', departamento: 'Vendas', data_criacao: '2023-04-18', salario: 6200, status: 'Pendente' },
-                { id: 8, nome: 'Beatriz Matos', email: 'beatriz@example.com', cargo: 'Social Media', departamento: 'Marketing', data_criacao: '2023-06-25', salario: 5400, status: 'Ativo' }
+                { id: 1, name: 'John Doe', email: 'john@example.com', position: 'Developer', department: 'Engineering', created_at: '2023-01-15', salary: 8500, status: 'Active' },
+                { id: 2, name: 'Mary Smith', email: 'mary@example.com', position: 'UI Designer', department: 'Product', created_at: '2023-02-20', salary: 7200, status: 'Active' },
+                { id: 3, name: 'Peter Jones', email: 'peter@example.com', position: 'Account Manager', department: 'Sales', created_at: '2022-11-10', salary: 6500, status: 'Pending' },
+                { id: 4, name: 'Ann Lee', email: 'ann@example.com', position: 'Marketing Analyst', department: 'Marketing', created_at: '2023-05-05', salary: 5800, status: 'Inactive' },
+                { id: 5, name: 'Luke Skywalker', email: 'luke@example.com', position: 'Jedi Knight', department: 'Force', created_at: '2023-03-12', salary: 8200, status: 'Active' },
+                { id: 6, name: 'Julia Roberts', email: 'julia@example.com', position: 'Product Owner', department: 'Product', created_at: '2022-09-30', salary: 9500, status: 'Active' },
+                { id: 7, name: 'Charles Xavier', email: 'charles@example.com', position: 'Professor', department: 'Mutant Relations', created_at: '2023-04-18', salary: 6200, status: 'Pending' },
+                { id: 8, name: 'Beatriz Parker', email: 'beatriz@example.com', position: 'Social Media', department: 'Marketing', created_at: '2023-06-25', salary: 5400, status: 'Active' }
             ];
 
-            // Atribuindo os dados ao componente
-            tabela.data = data;
+            // Assign data to component
+            table.data = data;
         });
     </script>
 </body>

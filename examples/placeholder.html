@@ -53,14 +53,15 @@
 
 <body>
     <div class="container">
+        <wc-nav></wc-nav>
         <header>
             <h1>Server-Side Filtering Demo</h1>
-            <p>Os dados abaixo são buscados dinamicamente do <strong>JSONPlaceholder API</strong>.</p>
+            <p>The data below is fetched dynamically from the <strong>JSONPlaceholder API</strong>.</p>
         </header>
 
         <div class="status-bar">
-            <span>Status da API: <strong>Online</strong></span>
-            <span id="loadingStatus">Carregando dados...</span>
+            <span>API Status: <strong>Online</strong></span>
+            <span id="loadingStatus">Loading data...</span>
         </div>
 
         <wc-table id="placeholderTable" server-side>
@@ -70,11 +71,12 @@
             <h2 slot="toolbar-left" style="margin:0">Users (API)</h2>
 
             <template slot="right-actions">
-                <button data-action="view" title="Ver Detalhes">🔍</button>
+                <button data-action="view" title="See Details (See console)">🔍</button>
             </template>
         </wc-table>
     </div>
 
+    <script type="module" src="./wc-nav.js"></script>
     <script type="module" src="../src/wc-table.js"></script>
     <script type="module">
         import { Config } from '../src/config.js';
@@ -98,7 +100,7 @@
 
         // Fetch function
         async function fetchUsers(query = '') {
-            loadingStatus.textContent = 'Buscando da API...';
+            loadingStatus.textContent = 'Fetching from API...';
             const url = query
                 ? `https://jsonplaceholder.typicode.com/users?q=${query}`
                 : `https://jsonplaceholder.typicode.com/users`;
@@ -107,7 +109,7 @@
                 const response = await fetch(url);
                 const data = await response.json();
 
-                // Formatar dados para a tabela
+                // Format data for the table
                 const formattedData = data.map(user => ({
                     id: user.id,
                     name: user.name,
@@ -119,9 +121,9 @@
                 }));
 
                 table.data = formattedData;
-                loadingStatus.textContent = `${formattedData.length} usuários encontrados.`;
+                loadingStatus.textContent = `${formattedData.length} users found.`;
             } catch (err) {
-                loadingStatus.textContent = 'Erro ao buscar dados.';
+                loadingStatus.textContent = 'Error fetching data.';
                 console.error(err);
             }
         }
@@ -137,7 +139,7 @@
         });
 
         table.addEventListener('action-click', (e) => {
-            console.log(`Usuário: ${e.detail.item.name}\nEmpresa: ${e.detail.item.company}`);
+            console.log(`User: ${e.detail.item.name}\nCompany: ${e.detail.item.company}`);
         });
 
         // Initial fetch

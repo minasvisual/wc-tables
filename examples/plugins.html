@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novos Plugins - wc-tables-kit</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { text-align: center; margin-bottom: 40px; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <wc-nav></wc-nav>
+        
+        <header>
+            <h1>Plugin Showcase</h1>
+            <p>Demonstration of all standard plugins included in the package.</p>
+        </header>
+
+        <div class="card">
+            <wc-table id="pluginTable">
+                <!-- Plugin Configuration -->
+                <wc-table-row col="avatar" type="image" rounded="true"></wc-table-row>
+                <wc-table-row col="website" type="link" label="Visit"></wc-table-row>
+                <wc-table-row col="address" type="object" item="city"></wc-table-row>
+                <wc-table-row col="tags" type="tags"></wc-table-row>
+                <wc-table-row col="created_at" type="date" format="DD on MMM, YYYY"></wc-table-row>
+                <wc-table-row col="info" type="expression" expr="${name} (${username})"></wc-table-row>
+                <wc-table-row col="actions" type="button" action="view" label="View Details"></wc-table-row>
+                
+                <h2 slot="toolbar-left" style="margin:0">Team Members</h2>
+            </wc-table>
+        </div>
+    </div>
+
+    <script type="module" src="./wc-nav.js"></script>
+    <script type="module" src="../src/wc-table.js"></script>
+    <script type="module">
+        const table = document.getElementById('pluginTable');
+
+        table.data = [
+            { 
+                avatar: 'https://i.pravatar.cc/150?u=1', 
+                name: 'Leanne Graham', 
+                username: 'Bret',
+                website: 'http://hildegard.org', 
+                address: { city: 'Gwenborough', street: 'Kulas Light' },
+                tags: ['admin', 'dev', 'support'],
+                created_at: '2023-05-15',
+                info: '',
+                actions: ''
+            },
+            { 
+                avatar: 'https://i.pravatar.cc/150?u=2', 
+                name: 'Ervin Howell', 
+                username: 'Antonette',
+                website: 'http://anastasia.net', 
+                address: { city: 'Wisokistad', street: 'Victor Plains' },
+                tags: 'sales, design',
+                created_at: '2023-06-20',
+                info: '',
+                actions: ''
+            },
+            { 
+                avatar: 'https://i.pravatar.cc/150?u=10', 
+                name: 'Clementina DuBuque', 
+                username: 'Moriah.Stanton',
+                website: 'http://ambrose.net', 
+                address: { city: 'Lebsackbury', street: 'Kattie Turnpike' },
+                tags: '["hr", "it"]',
+                created_at: '2024-01-10',
+                info: '',
+                actions: ''
+            }
+        ];
+
+        table.addEventListener('action-click', (e) => {
+            const { action, item } = e.detail;
+            alert(`Action: ${action} on item ${item.name}`);
+        });
+    </script>
+</body>
+</html>

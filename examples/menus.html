@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menus & Context Demo - wc-tables-kit</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8fafc;
+            margin: 0;
+            padding: 20px;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+            margin-bottom: 20px;
+        }
+
+        .menu-btn {
+            padding: 8px 12px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .menu-btn:hover {
+            background: #e2e8f0;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <wc-nav></wc-nav>
+
+        <header>
+            <h1>Menus & Interactive Actions</h1>
+            <p>Demonstration of using action slots to create interactive menus and complex interfaces.</p>
+        </header>
+
+        <div class="card">
+            <wc-table id="menuTable">
+                <wc-table-row col="status" type="badge"></wc-table-row>
+
+                <div slot="toolbar-left" style="display: flex; gap: 8px;">
+                    <button id="refreshBtn" class="menu-btn" title="Refresh Data">🔄</button>
+                    <button id="addBtn" class="menu-btn" title="Add New">➕</button>
+                </div>
+
+                <template slot="right-actions">
+                    <button class="menu-btn" data-action="edit" title="Edit">✏️</button>
+                    <button class="menu-btn" data-action="delete" title="Delete">🗑️</button>
+                </template>
+            </wc-table>
+        </div>
+    </div>
+
+    <script type="module" src="./wc-nav.js"></script>
+    <script type="module" src="../src/wc-table.js"></script>
+    <script type="module">
+        const table = document.getElementById('menuTable');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const addBtn = document.getElementById('addBtn');
+
+        const initialData = [
+            { id: 101, title: 'Web Components Article', author: 'Jane Doe', date: '2024-03-01', status: 'Published' },
+            { id: 102, title: 'Modern CSS Guide', author: 'John Smith', date: '2024-03-05', status: 'Draft' },
+            { id: 103, title: 'EcmaScript News', author: 'Charlie Brown', date: '2024-03-10', status: 'Review' },
+            { id: 104, title: 'Design Systems with Vanilla', author: 'Diana Prince', date: '2024-03-12', status: 'Archived' }
+        ];
+
+        // Initialize
+        table.data = [...initialData];
+
+        // Toolbar: Refresh
+        refreshBtn.addEventListener('click', () => {
+            table.data = [...initialData];
+            console.log('Data refreshed');
+        });
+
+        // Toolbar: Add
+        addBtn.addEventListener('click', () => {
+            const newId = Math.floor(Math.random() * 1000) + 200;
+            const statuses = ['Published', 'Draft', 'Review', 'Archived'];
+            const newItem = {
+                id: newId,
+                title: `New Content #${newId}`,
+                author: 'System',
+                date: new Date().toISOString().split('T')[0],
+                status: statuses[Math.floor(Math.random() * statuses.length)]
+            };
+            table.data = [...table.data, newItem];
+            console.log('Item added:', newItem);
+        });
+
+        // Action Clicks (Edit / Delete)
+        table.addEventListener('action-click', (e) => {
+            const { action, item } = e.detail;
+            console.log('Action Clicked:', action, item);
+            
+            if (action === 'delete') {
+                if (confirm(`Are you sure you want to delete "${item.title}"?`)) {
+                    table.data = table.data.filter(i => i.id !== item.id);
+                    console.log('Item deleted successfully');
+                }
+            } else if (action === 'edit') {
+                const newTitle = prompt('Enter new title:', item.title);
+                if (newTitle !== null && newTitle !== "") {
+                    table.data = table.data.map(i => 
+                        i.id === item.id ? { ...i, title: newTitle } : i
+                    );
+                    console.log('Item edited successfully');
+                }
+            }
+        });
+
+        // Test updated event
+        table.addEventListener('updated', (e) => {
+            console.log('[updated] event fired! Total items:', e.detail.data.length);
+        });
+    </script>
+</body>
+
+</html>

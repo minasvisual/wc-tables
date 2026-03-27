@@ -2,6 +2,12 @@ import { Config } from './config.js';
 import { DatePlugin } from './plugins/date.js';
 import { CurrencyPlugin } from './plugins/currency.js';
 import { BadgePlugin } from './plugins/badge.js';
+import { LinkPlugin } from './plugins/link.js';
+import { ImagePlugin } from './plugins/image.js';
+import { ObjectPlugin } from './plugins/object.js';
+import { TagsPlugin } from './plugins/tags.js';
+import { ButtonPlugin } from './plugins/button.js';
+import { ExpressionPlugin } from './plugins/expression.js';
 import './wc-table-row.js';
 
 class WcTable extends HTMLElement {
@@ -14,18 +20,35 @@ class WcTable extends HTMLElement {
         this._filterText = '';
         this._selectedRows = new Set();
         this._columnConfigs = {};
+        this._isFirstLoad = true;
         
         this._plugins = {
             'date': DatePlugin,
             'currency': CurrencyPlugin,
             'badge': BadgePlugin,
+            'link': LinkPlugin,
+            'image': ImagePlugin,
+            'object': ObjectPlugin,
+            'tags': TagsPlugin,
+            'button': ButtonPlugin,
+            'expression': ExpressionPlugin,
             ...Config.plugins // Merge custom plugins
         };
     }
 
     set data(value) {
+        const isFirst = this._isFirstLoad;
         this._data = Array.isArray(value) ? value : [];
         this._applyFilters();
+
+        if (!isFirst) {
+            this.dispatchEvent(new CustomEvent('updated', {
+                detail: { data: this._data },
+                bubbles: true,
+                composed: true
+            }));
+        }
+        this._isFirstLoad = false;
     }
 
     get data() {
@@ -63,12 +86,12 @@ class WcTable extends HTMLElement {
         this._columnConfigs = {};
         const rows = this.querySelectorAll('wc-table-row');
         rows.forEach(row => {
-            const config = {
-                col: row.getAttribute('col'),
-                type: row.getAttribute('type'),
-                format: row.getAttribute('format'),
-                class: row.getAttribute('class')
-            };
+            const config = {};
+            // Collect all attributes
+            Array.from(row.attributes).forEach(attr => {
+                config[attr.name] = attr.value;
+            });
+            
             if (config.col) {
                 this._columnConfigs[config.col] = config;
             }
@@ -296,7 +319,7 @@ class WcTable extends HTMLElement {
 
         const plugins = { ...this._plugins, ...Config.plugins };
         if (config && config.type && plugins[config.type]) {
-            return plugins[config.type].render(value, config);
+            return plugins[config.type].render(value, config, item);
         }
 
         return value;

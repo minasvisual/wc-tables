@@ -5,3 +5,6 @@ node_modules
 .cursor
 .agent
 .env
+package-lock.json
+yarn.lock
+audit

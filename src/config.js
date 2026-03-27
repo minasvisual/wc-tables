@@ -5,9 +5,31 @@
  */
 
 export const Config = {
-    lang: 'pt-br',
+    lang: 'en',
     plugins: {}, // Store for custom plugins
     translations: {
+        'en': {
+            searchPlaceholder: 'Filter results...',
+            noResults: 'No results found.',
+            waitingData: 'Waiting for data...',
+            id: 'ID',
+            nome: 'Name',
+            name: 'Name',
+            email: 'Email',
+            cargo: 'Position',
+            departamento: 'Department',
+            data_criacao: 'Creation Date',
+            created_at: 'Created At',
+            salario: 'Salary',
+            salary: 'Salary',
+            status: 'Status',
+            avatar: 'Avatar',
+            website: 'Website',
+            city: 'City',
+            tags: 'Tags',
+            info: 'Info',
+            actions: 'Actions'
+        },
         'pt-br': {
             searchPlaceholder: 'Filtrar resultados...',
             noResults: 'Nenhum resultado encontrado.',
@@ -19,19 +41,6 @@ export const Config = {
             departamento: 'Departamento',
             data_criacao: 'Data de Criação',
             salario: 'Salário',
-            status: 'Status'
-        },
-        'en': {
-            searchPlaceholder: 'Filter results...',
-            noResults: 'No results found.',
-            waitingData: 'Waiting for data...',
-            id: 'ID',
-            nome: 'Name',
-            email: 'Email',
-            cargo: 'Position',
-            departamento: 'Department',
-            data_criacao: 'Creation Date',
-            salario: 'Salary',
             status: 'Status'
         }
     },
