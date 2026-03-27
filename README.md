@@ -12,13 +12,17 @@ A flexible, slot-based, and modular **Vanilla Web Component Table**. Built with 
 
 ## Demo
 
-- [Basic Table](https://minasvisual.github.io/wc-tables/)
-- [Menus & Interactive Actions](https://minasvisual.github.io/wc-tables/examples/menus.html)
-- [Server-Side Filtering](https://minasvisual.github.io/wc-tables/examples/placeholder.html)
+- [Examples](https://minasvisual.github.io/wc-tables/) 
+- [JsFiddle](https://jsfiddle.net/mantovaniartes/bcs9pdyf/4/)
 
 ## Installation
 ```bash
 npm install wc-tables-kit
+```
+
+or use it via CDN
+```html
+<script type="module" src="https://unpkg.com/wc-tables-kit@1.0.5/src/wc-table.js"></script>
 ```
 
 ## Quick Start
@@ -40,7 +44,7 @@ npm install wc-tables-kit
 </wc-table>
 
 <script type="module">
-    import 'wc-tables-kit';
+    import 'wc-tables-kit'; // for npm package
     
     const table = document.getElementById('myTable');
     table.data = [
@@ -61,7 +65,7 @@ The library includes several built-in plugins for common data types:
 | Type | Attributes | Description |
 | --- | --- | --- |
 | `date` | `format` | Native `Intl` locale OR custom tokens like `DD on MMM, YYYY`. |
-| `currency`| `format` | Currency code (USD, BRL, EUR). |
+| `currency`| `format` | Intl.NumberFormat Currency code (USD, BRL, EUR, ..). |
 | `badge` | - | Renders the value as a colored badge. |
 | `link` | `label`, `target` | Renders an `<a>` tag. |
 | `image` | `width`, `height`, `rounded` | Renders an `<img>` tag. |

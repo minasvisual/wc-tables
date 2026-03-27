@@ -7,7 +7,7 @@ export class WcNav extends HTMLElement {
     connectedCallback() {
         const path = window.location.pathname;
         const isRoot = path.endsWith('index.html') || path.endsWith('/');
-        
+
         const rootPath = isRoot ? './' : '../';
         const examplesPath = isRoot ? './examples/' : './';
 
@@ -69,6 +69,7 @@ export class WcNav extends HTMLElement {
                 <a href="${examplesPath}placeholder.html" class="${path.endsWith('placeholder.html') ? 'active' : ''}">API (Placeholder)</a>
                 <a href="${examplesPath}plugins.html" class="${path.endsWith('plugins.html') ? 'active' : ''}">Plugins</a>
                 <a href="${examplesPath}menus.html" class="${path.endsWith('menus.html') ? 'active' : ''}">Menus Demo</a>
+                <a href="${examplesPath}react.html" class="${path.endsWith('react.html') ? 'active' : ''}">React Demo</a>
             </nav>
         `;
     }

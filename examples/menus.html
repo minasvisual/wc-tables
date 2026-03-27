@@ -115,7 +115,7 @@
         table.addEventListener('action-click', (e) => {
             const { action, item } = e.detail;
             console.log('Action Clicked:', action, item);
-            
+
             if (action === 'delete') {
                 if (confirm(`Are you sure you want to delete "${item.title}"?`)) {
                     table.data = table.data.filter(i => i.id !== item.id);
@@ -124,7 +124,7 @@
             } else if (action === 'edit') {
                 const newTitle = prompt('Enter new title:', item.title);
                 if (newTitle !== null && newTitle !== "") {
-                    table.data = table.data.map(i => 
+                    table.data = table.data.map(i =>
                         i.id === item.id ? { ...i, title: newTitle } : i
                     );
                     console.log('Item edited successfully');
