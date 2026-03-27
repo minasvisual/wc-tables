@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>wc-table React Adapter Example</title>
+
+    <!-- React and ReactDOM UMD (sets window.React and window.ReactDOM for Babel) -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+
+    <!-- Babel Standalone (transpiles JSX in the app script) -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <!-- wc-table Web Component + React adapter (native ESM, uses window.React as fallback) -->
+    <script type="module" src="../src/wc-table.js"></script>
+    <script type="module" src="../src/react.js"></script>
+
+    <style>
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: #f8fafc;
+            padding: 2rem;
+            color: #1e293b;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .header {
+            margin-bottom: 2rem;
+        }
+
+        .controls {
+            margin-bottom: 1rem;
+            display: flex;
+            gap: 1rem;
+        }
+
+        button {
+            padding: 0.5rem 1rem;
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #2563eb;
+        }
+
+        .log {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: #f1f5f9;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="root"></div>
+
+    <!--
+        The App script uses JSX, so it needs Babel.
+        The adapter (react.js) is a type="module" script and dispatches
+        'wc-table-react-ready' when it's done setting window.WcTableReact.
+    -->
+    <script type="text/babel">
+        function initApp() {
+            const { useState } = React;
+            const { WcTable, WcTableRow } = window.WcTableReact;
+
+            const App = () => {
+                const [data, setData] = useState([
+                    { id: 1, name: 'John Doe', role: 'Admin', status: 'active' },
+                    { id: 2, name: 'Jane Smith', role: 'Editor', status: 'inactive' },
+                    { id: 3, name: 'Bob Wilson', role: 'User', status: 'active' }
+                ]);
+                const [logs, setLogs] = useState([]);
+
+                const addLog = (msg) => {
+                    setLogs(prev => [`[${new Date().toLocaleTimeString()}] ${msg}`, ...prev]);
+                };
+
+                const addRow = () => {
+                    const newId = data.length + 1;
+                    setData([...data, {
+                        id: newId,
+                        name: `New User ${newId}`,
+                        role: 'User',
+                        status: 'active'
+                    }]);
+                    addLog('Added new row');
+                };
+
+                const handleAction = (e) => {
+                    const { action, item } = e.detail;
+                    addLog(`Action: ${action} on ${item.name}`);
+                };
+
+                return (
+                    <div className="container">
+                        <div className="header">
+                            <h1>React Adapter Example</h1>
+                            <p>Demonstrates <code>wc-table</code> with React state and events.</p>
+                        </div>
+
+                        <div className="controls">
+                            <button onClick={addRow}>Add Row</button>
+                            <button onClick={() => setData([...data].reverse())}>Reverse Order</button>
+                        </div>
+
+                        <WcTable
+                            data={data}
+                            onActionClick={handleAction}
+                        >
+                            <WcTableRow col="id" type="badge"></WcTableRow>
+                            <WcTableRow col="name"></WcTableRow>
+                            <WcTableRow col="role"></WcTableRow>
+                            <WcTableRow col="status" type="badge"></WcTableRow>
+
+                            <div slot="right-actions">
+                                <button data-action="edit">Edit</button>
+                                <button data-action="delete">Delete</button>
+                            </div>
+                        </WcTable>
+
+                        <div className="log">
+                            <strong>Event Log:</strong>
+                            {logs.map((log, i) => <div key={i}>{log}</div>)}
+                        </div>
+                    </div>
+                );
+            };
+
+            const root = ReactDOM.createRoot(document.getElementById('root'));
+            root.render(<App />);
+        }
+
+        // The module script may have already fired the event before Babel
+        // attached this listener, so we check the global first.
+        if (window.WcTableReact) {
+            initApp();
+        } else {
+            window.addEventListener('wc-table-react-ready', initApp);
+        }
+    </script>
+</body>
+
+</html>

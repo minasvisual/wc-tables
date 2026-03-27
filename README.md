@@ -136,5 +136,98 @@ To handle large datasets via API, add the `server-side` attribute. This disables
 </script>
 ```
 
+## React & Next.js Integration
+
+To use `wc-table` in a React or Next.js environment, you can use the provided adapter that handles property mapping (essential for the `data` property) and event listeners.
+
+### Using the Adapter
+
+Install the package and import the adapter:
+
+```bash
+npm install wc-tables-kit
+```
+
+```jsx
+import 'wc-tables-kit';
+import { WcTable, WcTableRow } from 'wc-tables-kit/src/react.js';
+
+const MyComponent = () => {
+    const data = [
+        { id: 1, name: 'John Doe', status: 'active' },
+        { id: 2, name: 'Jane Smith', status: 'inactive' }
+    ];
+
+    const handleAction = (e) => {
+        const { action, item } = e.detail;
+        console.log(`Action ${action} on`, item);
+    };
+
+    return (
+        <WcTable 
+            data={data} 
+            onActionClick={handleAction}
+            className="my-custom-table"
+        >
+            <WcTableRow col="name" />
+            <WcTableRow col="status" type="badge" />
+            
+            <div slot="right-actions">
+                <button data-action="edit">Edit</button>
+            </div>
+        </WcTable>
+    );
+};
+```
+
+### Next.js Compatibility
+
+The adapter is compatible with the Next.js App Router. Since Web Components are client-side only, ensure you add the `'use client'` directive to the top of your file.
+
+For a complete working example using React via CDN, see [examples/react.html](./examples/react.html).
+
+## Customizing Styles
+
+The `wc-table` is designed to be visually premium out of the box, but it can be customized in several ways:
+
+### 1. Global Inheritance
+The component inherits several properties from its parent:
+- `font-family`: Change the typography by setting it on the `wc-table` tag or its parent.
+- `color`: Changes the default text color.
+
+### 2. Slot Styling
+Content placed in slots (like `toolbar-left`, `before`, `after`, or row actions) is part of the Light DOM and can be styled exactly like any other element in your application.
+
+```css
+/* Styling content inside the toolbar slot */
+[slot="toolbar-left"] h2 {
+    color: #4f46e5;
+    font-size: 1.5rem;
+    letter-spacing: -0.025em;
+}
+```
+
+### 3. Host Styling
+You can style the `wc-table` element itself to control its layout and spacing:
+
+```css
+wc-table {
+    margin: 4rem 0;
+    --table-bg: #ffffff; /* Example variable */
+}
+```
+
+### 4. Deep Customization (Internal)
+The internal table elements are encapsulated in the Shadow DOM. To change internal colors (like the header background), you should ideally use CSS variables. 
+
+If you want to modify the core appearance, you can edit `src/wc-table.css` and use variables for theme consistency:
+
+```css
+/* inside wc-table.css */
+th {
+    background: var(--wc-table-header-bg, #f1f5f9);
+}
+```
+
 ## License
 MIT
