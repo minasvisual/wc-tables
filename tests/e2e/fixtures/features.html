@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Features Fixture</title>
+</head>
+<body>
+    <!-- 1. Table with inline JSON and hidden cols -->
+    <wc-table id="tableAttributes" 
+              data='[{"id":1,"name":"A","val":10},{"id":2,"name":"B","val":20}]'
+              hidden-cols="id">
+        <wc-table-row col="id"></wc-table-row>
+        <wc-table-row col="name"></wc-table-row>
+        <wc-table-row col="val"></wc-table-row>
+    </wc-table>
+
+    <!-- 2. Table with client-side pagination -->
+    <wc-table id="tablePagination" page-size="2">
+        <wc-table-row col="name"></wc-table-row>
+    </wc-table>
+
+    <!-- 3. Standalone paginate component -->
+    <wc-paginate id="standalonePaginate" total="50" page-size="10"></wc-paginate>
+
+    <script type="module" src="../../../src/wc-table.js"></script>
+    <script type="module" src="../../../src/wc-paginate.js"></script>
+</body>
+</html>

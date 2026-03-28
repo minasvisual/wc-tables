@@ -23,6 +23,7 @@ class WcTable extends _HTMLElement {
         this._selectedRows = new Set();
         this._columnConfigs = {};
         this._isFirstLoad = true;
+        this._currentPage = 1;
         
         this._plugins = {
             'date': DatePlugin,
@@ -59,6 +60,19 @@ class WcTable extends _HTMLElement {
 
     connectedCallback() {
         this._upgradeProperty('data');
+
+        // Load initial data from the "data" attribute if no JS property was set
+        if (this._data.length === 0 && this.hasAttribute('data')) {
+            try {
+                const parsed = JSON.parse(this.getAttribute('data'));
+                if (Array.isArray(parsed)) {
+                    this.data = parsed;
+                }
+            } catch (e) {
+                console.warn('[wc-table] Failed to parse "data" attribute as JSON:', e.message);
+            }
+        }
+
         this._updateColumnConfigs();
         this.dispatchEvent(new CustomEvent('before-mount', { bubbles: true, composed: true }));
         this.render();
@@ -101,10 +115,74 @@ class WcTable extends _HTMLElement {
     }
 
     static get observedAttributes() {
-        return ['server-side'];
+        return ['server-side', 'data', 'page-size', 'hidden-cols'];
+    }
+
+    /** Returns a Set of column keys that should be hidden. */
+    get _hiddenCols() {
+        const raw = this.getAttribute('hidden-cols');
+        if (!raw) return new Set();
+        // Accept both JSON array (["id","phone"]) and comma-separated (id,phone)
+        try {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) return new Set(parsed.map(String));
+        } catch (_) { /* not JSON — fall through */ }
+        return new Set(raw.split(',').map(s => s.trim()).filter(Boolean));
+    }
+
+    get _pageSize() {
+        const val = parseInt(this.getAttribute('page-size'), 10);
+        return val > 0 ? val : 0; // 0 = pagination disabled
+    }
+
+    get _totalPages() {
+        if (!this._pageSize) return 1;
+        return Math.max(1, Math.ceil(this._filteredData.length / this._pageSize));
+    }
+
+    _goToPage(page) {
+        const clamped = Math.min(Math.max(1, page), this._totalPages);
+        if (clamped === this._currentPage) return;
+        this._currentPage = clamped;
+        this.dispatchEvent(new CustomEvent('page-changed', {
+            detail: { page: this._currentPage, totalPages: this._totalPages },
+            bubbles: true,
+            composed: true
+        }));
+        this.renderContent();
+    }
+
+    _getPagedData() {
+        if (!this._pageSize) return this._filteredData;
+        const start = (this._currentPage - 1) * this._pageSize;
+        return this._filteredData.slice(start, start + this._pageSize);
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (name === 'data' && newValue !== oldValue) {
+            try {
+                const parsed = JSON.parse(newValue);
+                if (Array.isArray(parsed)) {
+                    this.data = parsed;
+                } else {
+                    console.warn('[wc-table] The "data" attribute must be a JSON array.');
+                }
+            } catch (e) {
+                console.warn('[wc-table] Failed to parse "data" attribute as JSON:', e.message);
+            }
+        }
+        if (name === 'page-size' && newValue !== oldValue) {
+            this._currentPage = 1;
+            this.renderContent();
+        }
+        if (name === 'hidden-cols' && newValue !== oldValue) {
+            this.renderContent();
+        }
     }
 
     _applyFilters() {
+        this._currentPage = 1; // reset to first page on filter change
+
         if (this.hasAttribute('server-side')) {
             this._filteredData = [...this._data];
             this._applySort();
@@ -181,6 +259,7 @@ class WcTable extends _HTMLElement {
     _sort(key) {
         const direction = this._sortConfig.key === key && this._sortConfig.direction === 'asc' ? 'desc' : 'asc';
         this._sortConfig = { key, direction };
+        this._currentPage = 1; // reset to first page on sort change
         
         if (this.hasAttribute('server-side')) {
             this.dispatchEvent(new CustomEvent('sort-changed', {
@@ -247,7 +326,7 @@ class WcTable extends _HTMLElement {
 
                 <div class="table-container">
                     <div id="tableContent">
-                        ${this._renderTable()}
+                        ${this._renderTable()}${this._renderPagination()}
                     </div>
                 </div>
 
@@ -266,8 +345,9 @@ class WcTable extends _HTMLElement {
     renderContent() {
         const container = this.shadowRoot.getElementById('tableContent');
         if (container) {
-            container.innerHTML = this._renderTable();
+            container.innerHTML = this._renderTable() + this._renderPagination();
             this._setupEventListeners();
+            this._setupPaginationListeners();
         }
     }
 
@@ -278,11 +358,12 @@ class WcTable extends _HTMLElement {
             th.addEventListener('click', () => this._sort(th.dataset.key));
         });
 
-        // Row selection
+        // Row selection — use paged data so index maps correctly
+        const pagedData = this._getPagedData();
         const checkboxes = this.shadowRoot.querySelectorAll('.row-checkbox');
         checkboxes.forEach((cb, index) => {
             cb.addEventListener('change', (e) => {
-                this._handleSelection(e, this._filteredData[index]);
+                this._handleSelection(e, pagedData[index]);
             });
         });
 
@@ -291,6 +372,52 @@ class WcTable extends _HTMLElement {
         if (selectAll) {
             selectAll.addEventListener('change', (e) => this._handleSelectAll(e));
         }
+    }
+
+    _setupPaginationListeners() {
+        const pg = this.shadowRoot.getElementById('wc-pagination');
+        if (!pg) return;
+        pg.querySelectorAll('[data-page]').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const target = btn.dataset.page;
+                if (target === 'prev') this._goToPage(this._currentPage - 1);
+                else if (target === 'next') this._goToPage(this._currentPage + 1);
+                else this._goToPage(parseInt(target, 10));
+            });
+        });
+    }
+
+    _renderPagination() {
+        if (!this._pageSize || this._totalPages <= 1) return '';
+
+        const current = this._currentPage;
+        const total = this._totalPages;
+        const start = (current - 1) * this._pageSize + 1;
+        const end = Math.min(current * this._pageSize, this._filteredData.length);
+
+        // Show up to 5 page buttons around current page
+        const range = [];
+        const delta = 2;
+        for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
+            range.push(i);
+        }
+
+        const pageButtons = range.map(p => `
+            <button class="pg-btn ${p === current ? 'pg-active' : ''}" data-page="${p}">${p}</button>
+        `).join('');
+
+        return `
+            <div class="wc-pagination" id="wc-pagination">
+                <span class="pg-info">${start}–${end} / ${this._filteredData.length}</span>
+                <div class="pg-controls">
+                    <button class="pg-btn" data-page="prev" ${current === 1 ? 'disabled' : ''}>&#8249;</button>
+                    ${range[0] > 1 ? '<button class="pg-btn" data-page="1">1</button><span class="pg-ellipsis">…</span>' : ''}
+                    ${pageButtons}
+                    ${range[range.length - 1] < total ? '<span class="pg-ellipsis">…</span><button class="pg-btn" data-page="' + total + '">' + total + '</button>' : ''}
+                    <button class="pg-btn" data-page="next" ${current === total ? 'disabled' : ''}>&#8250;</button>
+                </div>
+            </div>
+        `;
     }
 
     _handleActionClick(e) {
@@ -336,7 +463,8 @@ class WcTable extends _HTMLElement {
             return `<div class="no-results">${Config.t('waitingData')}</div>`;
         }
 
-        const keys = Object.keys(this._data[0]);
+        const hiddenCols = this._hiddenCols;
+        const keys = Object.keys(this._data[0]).filter(k => !hiddenCols.has(k));
         const hasLeftActions = this.querySelector('[slot="left-actions"]');
         const hasRightActions = this.querySelector('[slot="right-actions"]');
 
@@ -381,11 +509,14 @@ class WcTable extends _HTMLElement {
         thead.appendChild(headerRow);
         table.appendChild(thead);
 
-        // Body
+        // Body — only render current page slice
+        const pagedData = this._getPagedData();
+        const pageOffset = this._pageSize ? (this._currentPage - 1) * this._pageSize : 0;
         const tbody = document.createElement('tbody');
-        this._filteredData.forEach((item, index) => {
+        pagedData.forEach((item, index) => {
             const tr = document.createElement('tr');
-            tr.dataset.index = index;
+            // Store the GLOBAL index so _handleActionClick resolves the right item
+            tr.dataset.index = pageOffset + index;
 
             // Checkbox
             const tdCheck = document.createElement('td');

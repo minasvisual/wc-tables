@@ -24,6 +24,7 @@ wc-tables/
 │   ├── wc-table.js          # Core Web Component (<wc-table>)
 │   ├── wc-table.css         # Shadow DOM styles for the component
 │   ├── wc-table-row.js      # Column config element (<wc-table-row>)
+│   ├── wc-paginate.js       # Standalone pagination component (<wc-paginate>)
 │   ├── config.js            # Global Config: i18n, plugin registry
 │   ├── react.js             # React/Next.js adapter (no JSX, pure ESM)
 │   └── plugins/
@@ -65,14 +66,28 @@ The main component. Registered as `customElements.define('wc-table', WcTable)`.
 | `_selectedRows` | `Set` | Currently selected items |
 | `_columnConfigs` | `Object` | Parsed from child `<wc-table-row>` elements |
 | `_plugins` | `Object` | Merged built-in + custom plugins |
+| `_currentPage` | `number` | Active page index (1-based). Managed by pagination logic |
 
 **Setting data:**  
-Data **must** be set as a DOM property, not an attribute (arrays can't be serialized as HTML attributes).
+Preferred approach — set as a JS property:
 ```js
 document.getElementById('myTable').data = [{ id: 1, name: 'Alice' }];
 ```
+Alternatively, pass a JSON array as an HTML attribute (useful for static/SSR content):
+```html
+<wc-table data='[{"id":1,"name":"Alice"}]'></wc-table>
+```
+The JS property takes priority over the attribute when both are present.
 
-**Observed attributes:** `server-side`
+**Observed attributes:** `server-side`, `data`, `page-size`, `hidden-cols`
+
+**Computed getters (pagination):**
+- `_pageSize` → parses `page-size` attribute as integer; returns `0` if absent (pagination off)
+- `_totalPages` → `Math.ceil(_filteredData.length / _pageSize)`
+- `_getPagedData()` → slices `_filteredData` for the current page
+
+**Computed getters (column visibility):**
+- `_hiddenCols` → parses `hidden-cols` attribute; returns a `Set<string>` of keys to exclude. Accepts comma-separated (`id,phone`) or JSON array (`["id","phone"]`) format. Returns empty `Set` if attribute is absent.
 
 **Lifecycle methods:**
 - `connectedCallback()` → calls `render()`, sets up a `MutationObserver` on child `<wc-table-row>` elements
@@ -102,6 +117,46 @@ Registered as `wc-table-row` using a guard: `if (!customElements.get('wc-table-r
 | `expr` | Template string for expression plugin (e.g. `${name} (${role})`) |
 | `class` | Extra CSS class forwarded to the plugin renderer |
 | `rounded`, `width`, `height` | Image plugin options |
+
+---
+
+### `<wc-paginate>` — `src/wc-paginate.js`
+
+A standalone pagination control, independent of `<wc-table>`. Ideal for server-side pagination scenarios where the host app controls data fetching.
+
+Registered as `customElements.define('wc-paginate', WcPaginate)`.
+Package export: `wc-tables-kit/paginate`.
+
+**Attributes:**
+| Attribute | Type | Default | Description |
+|---|---|---|---|
+| `total` | `number` | `0` | Total number of records. **Required** for page count calculation |
+| `page` | `number` | `1` | Current active page (1-based). Setting this attribute re-renders |
+| `page-size`| `number` | `10` | Records per page |
+| `delta` | `number` | `2` | Number of page buttons shown each side of the active page |
+| `hide-info`| `boolean`| — | Hides the `X–Y / Z` info counter when present |
+
+**Computed getters:**
+- `_currentPage` → internal mutable `_page` (survives attribute updates)
+- `_pageSize` → parses `page-size`
+- `_total` → parses `total`
+- `_totalPages` → `Math.ceil(_total / _pageSize)`
+- `_delta` → parses `delta`
+- `_buildRange()` → computes the visible page number window
+
+**Public method:**
+- `goToPage(n)` → navigates to page `n` without firing `page-changed`; use `setAttribute('page', n)` if you want the event.
+
+**Event:**
+| Event | `detail` | When |
+|---|---|---|
+| `page-changed` | `{ page, totalPages, pageSize }` | User clicks a page button |
+
+**Internal design notes:**
+- Styles are inlined in the JS (`const CSS = ...`) — no external CSS file dependency.
+- `_render()` rebuilds the entire shadow DOM on each change (simple, ~10 DOM nodes).
+- Does **not** manage data fetching — the host reacts to `page-changed` and updates `<wc-table>.data`.
+- Changing `page` attribute externally re-renders but does **not** fire `page-changed` (prevents loops).
 
 ---
 
@@ -202,15 +257,46 @@ All events bubble and are composed (cross-shadow-DOM).
 | `before-filter` | `{ query }` | Before search filter is applied |
 | `after-filter` | `{ results }` | After filter is applied |
 | `sort-changed` | `{ key, direction }` | Column header clicked |
+| `page-changed` | `{ page, totalPages }` | Active page changes (client-side pagination only) |
 | `action-click` | `{ action, item, originalEvent }` | `data-action` button clicked |
 | `row-selected` | `{ item, isSelected, selectedRows }` | Single row checkbox toggled |
 | `selection-changed` | `{ selectedRows, allSelected }` | "Select all" toggled |
 
 ---
 
-## 8. Server-Side Mode
+## 8. Client-Side Pagination
 
-Add the `server-side` attribute to disable local filtering/sorting.  
+Add `page-size="N"` to the `<wc-table>` element to enable automatic pagination.
+
+```html
+<wc-table page-size="10">...</wc-table>
+```
+
+**How it works internally:**
+1. `_getPagedData()` slices `_filteredData` from `(page-1)*pageSize` to `page*pageSize`.
+2. `_renderTable()` iterates over the paged slice instead of the full filtered set.
+3. `_renderPagination()` produces a `<div class="wc-pagination">` with prev/next/numbered buttons.
+4. `renderContent()` always appends the result of both methods: `_renderTable() + _renderPagination()`.
+5. `_setupPaginationListeners()` binds click events on `[data-page]` buttons via `_goToPage(n)`.
+
+**Reset behaviour:** `_currentPage` resets to `1` on every filter, sort, and `page-size` attribute change.
+
+**Changing page size at runtime:**
+```js
+table.setAttribute('page-size', '25'); // triggers attributeChangedCallback → reset + re-render
+```
+
+**Navigating programmatically:**
+```js
+table._goToPage(3); // internal method; use event listeners to react to page changes
+```
+
+---
+
+## 9. Server-Side Mode
+
+Add the `server-side` attribute to disable local filtering/sorting.
+> **Note:** Client-side pagination (`page-size`) and server-side mode are independent. In server-side mode the host app manages slicing, so `page-size` should not be combined with `server-side`.  
 The component then only renders what's in `.data` and emits events for the host to respond to.
 
 ```html
@@ -341,7 +427,12 @@ Then callers can override: `wc-table { --wc-table-header-bg: #1e293b; }`.
 
 ## 12. Common Patterns & Gotchas
 
-- **Always set `.data` as a property, not an attribute.** The component ignores an `data` attribute; only the JS property setter triggers a render.
+- **Prefer `.data` property over the attribute for dynamic data.** The `data` HTML attribute is supported and useful for static/SSR content, but the JS property setter is the idiomatic approach for dynamic datasets.
+- **`data` attribute must be valid JSON array.** If the value is not parseable, a `console.warn` is emitted and the table stays empty. The JS property always takes priority.
+- **`hidden-cols` hides columns, it does not remove data.** The underlying `_data` and `_filteredData` arrays are untouched — hidden keys are simply excluded from `keys` before rendering headers and cells. This means sorting, filtering, and `action-click` payloads still include the hidden fields.
+- **`hidden-cols` supports both formats.** `id,phone` (comma-separated) and `["id","phone"]` (JSON array) are both accepted. Non-existent keys are silently ignored.
+- **`page-size` interacts with row selection.** Selected rows are tracked by object reference in `_selectedRows`. Pagination changes visible rows but does not clear the selection set.
+- **Do not combine `page-size` with `server-side`.** Server-side mode bypasses local data slicing — let the API handle pagination instead.
 - **`wc-table-row` elements must be direct children.** The `MutationObserver` only watches `childList` of the `<wc-table>` itself.
 - **Column keys are auto-detected** from `Object.keys(data[0])` on first render, unless hidden by `wc-table-row` config.
 - **Adding a plugin does not auto-re-render.** You must set `.data` again after calling `Config.registerPlugin()`.

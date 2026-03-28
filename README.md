@@ -9,6 +9,10 @@ A flexible, slot-based, and modular **Vanilla Web Component Table**. Built with 
 - **Row Actions**: Add 'Edit', 'Delete', or custom buttons to every row with full data context.
 - **Bulk Selection**: Integrated checkbox system with event reporting.
 - **Dynamic Sorting & Filtering**: Local data management out of the box.
+- **Client-Side Pagination**: Add `page-size` attribute to paginate large datasets without any server interaction.
+- **Inline JSON Data**: Pass initial data directly via the `data` HTML attribute — no JavaScript required for static datasets.
+- **Hidden Columns**: Use `hidden-cols` to hide specific columns without removing them from the data, via a comma-separated list or JSON array.
+- **`<wc-paginate>`**: Standalone pagination control component — use it with server-side mode or any custom data list.
 
 ## Demo
 
@@ -27,7 +31,7 @@ or use it via CDN
 
 ## Quick Start
 ```html
-<wc-table id="myTable">
+<wc-table id="myTable" page-size="10">
     <!-- Configure columns -->
     <wc-table-row col="created_at" type="date" format="en-US"></wc-table-row>
     <wc-table-row col="salary" type="currency" format="USD"></wc-table-row>
@@ -111,11 +115,12 @@ The component emits several custom events for deep integration:
 | `after-mount` | `{}` | Fired after the component is fully rendered. |
 | `before-filter`| `{ query }` | Fired before local filtering starts. |
 | `after-filter` | `{ results }` | Fired after local filtering is finished. |
-| `updated` | `{ data }` | **New!** Fired when the `data` array is modified (skips first load). |
+| `updated` | `{ data }` | Fired when the `data` array is modified (skips first load). |
 | `action-click` | `{ action, item, originalEvent }` | Fired when a button with `data-action` inside a slot is clicked. |
 | `row-selected` | `{ item, isSelected, selectedRows }` | Fired when a single row is toggled. |
 | `selection-changed` | `{ selectedRows, allSelected }` | Fired when "Select All" is toggled. |
 | `sort-changed` | `{ key, direction }` | Fired when sorting changes (useful for server-side). |
+| `page-changed` | `{ page, totalPages }` | Fired when the active page changes (client-side pagination). |
 
 ## Server-Side Mode
 To handle large datasets via API, add the `server-side` attribute. This disables local filtering/sorting and relies on events:
@@ -137,6 +142,157 @@ To handle large datasets via API, add the `server-side` attribute. This disables
         const { key, direction } = e.detail;
         fetchSortedData(key, direction).then(data => table.data = data);
     });
+</script>
+```
+
+## Client-Side Pagination
+
+Add the `page-size` attribute to enable automatic pagination without any server interaction:
+
+```html
+<wc-table id="myTable" page-size="10">
+    ...
+</wc-table>
+```
+
+The component will:
+- Slice the data automatically, showing only `page-size` rows at a time.
+- Render a pagination bar below the table with **Previous / Next** buttons and numbered page buttons.
+- Display a `1–10 / 100` info counter on the left.
+- Reset to page 1 automatically when the user filters or sorts.
+
+**Changing the page size at runtime:**
+```js
+document.getElementById('myTable').setAttribute('page-size', '25');
+```
+
+**Listening to page changes:**
+```js
+table.addEventListener('page-changed', (e) => {
+    const { page, totalPages } = e.detail;
+    console.log(`Page ${page} of ${totalPages}`);
+});
+```
+
+> **Note:** `page-size` is a client-side feature and is independent of `server-side` mode (which manages its own data slicing via the API).
+
+## Inline JSON Data (HTML Attribute)
+
+For static content or server-rendered pages, you can pass the initial data directly via the `data` attribute — no JavaScript required:
+
+```html
+<wc-table data='[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}]'>
+    <wc-table-row col="id"></wc-table-row>
+    <wc-table-row col="name"></wc-table-row>
+</wc-table>
+```
+
+- The value must be a **valid JSON array** string.
+- If a JS `.data` property is set before mount, it takes priority over the attribute.
+- Changing the attribute dynamically via `setAttribute` triggers a live update.
+
+## Hiding Columns
+
+Use the `hidden-cols` attribute to hide specific columns from the rendered table — the data itself is not affected.
+
+**Comma-separated (recommended for static HTML):**
+```html
+<wc-table hidden-cols="id,phone,company">
+```
+
+**JSON array (useful when generated server-side or set via JS):**
+```html
+<wc-table hidden-cols='["id","phone"]'>
+```
+
+**Changing at runtime:**
+```js
+table.setAttribute('hidden-cols', 'id,phone');
+// the table re-renders automatically
+```
+
+**In React / Next.js:**
+```jsx
+<WcTable data={users} hidden-cols="id,phone,address">
+```
+
+> Columns not present in the data object are silently ignored.
+
+## `<wc-paginate>` — Standalone Pagination Component
+
+A separate, reusable pagination control that can be used alongside `<wc-table>` in server-side mode or with any other data list.
+
+### Installation / Import
+
+```html
+<!-- CDN -->
+<script type="module" src="https://unpkg.com/wc-tables-kit/src/wc-paginate.js"></script>
+```
+
+```js
+// npm
+import 'wc-tables-kit/paginate';
+```
+
+### Attributes
+
+| Attribute | Type | Default | Description |
+|---|---|---|---|
+| `total` | number | `0` | **Required.** Total number of records |
+| `page` | number | `1` | Current active page (1-based) |
+| `page-size` | number | `10` | Records per page |
+| `delta` | number | `2` | Page buttons shown around the active page |
+| `hide-info` | boolean | — | When present, hides the `X–Y / Z` counter |
+
+### Event
+
+```js
+element.addEventListener('page-changed', (e) => {
+    const { page, totalPages, pageSize } = e.detail;
+});
+```
+
+### Basic Usage
+
+```html
+<wc-paginate total="100" page-size="10" page="1"></wc-paginate>
+
+<script type="module">
+    document.querySelector('wc-paginate')
+        .addEventListener('page-changed', e => {
+            console.log('Go to page', e.detail.page);
+        });
+</script>
+```
+
+### Programmatic Navigation
+
+```js
+const pg = document.querySelector('wc-paginate');
+pg.goToPage(3); // does not fire page-changed, just re-renders
+pg.setAttribute('total', '200'); // live update
+```
+
+### Integration with `<wc-table>` in Server-Side Mode
+
+```html
+<wc-table id="table" server-side>...</wc-table>
+<wc-paginate id="pg" total="0" page-size="10"></wc-paginate>
+
+<script type="module">
+    const table = document.getElementById('table');
+    const pg    = document.getElementById('pg');
+
+    async function load({ page = 1 } = {}) {
+        const res  = await fetch(`/api/users?page=${page}&limit=10`);
+        const json = await res.json();
+        table.data = json.data;
+        pg.setAttribute('total', json.total);
+        pg.setAttribute('page', page);
+    }
+
+    pg.addEventListener('page-changed', e => load({ page: e.detail.page }));
+    load();
 </script>
 ```
 
