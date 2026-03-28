@@ -9,30 +9,25 @@ test.describe('wc-table and wc-paginate new features', () => {
     });
 
     test('should support inline JSON data and hidden-cols', async ({ page }) => {
-        const table = page.locator('#tableAttributes');
-        
-        // Wait for initial render of inline data
-        await expect(table.locator('>> thead th')).toHaveCount(2); // ID is hidden, so only name and val
-        await expect(table.locator('>> tbody tr')).toHaveCount(2);
+        const dataHeaders = page.locator('#tableAttributes >> thead th[data-key]');
+        const tbodyTr = page.locator('#tableAttributes >> tbody tr');
 
-        // Check columns
-        const headers = await table.locator('>> thead th').allTextContents();
+        await expect(dataHeaders).toHaveCount(2);
+        await expect(tbodyTr).toHaveCount(2);
+
+        const headers = await dataHeaders.allTextContents();
         expect(headers.map(h => h.trim())).not.toContain('ID');
-        expect(headers.map(h => h.trim())).toContain('NAME');
-        expect(headers.map(h => h.trim())).toContain('VAL');
+        expect(headers.map(h => h.trim())).toContain('Name');
+        expect(headers.map(h => h.trim())).toContain('val');
 
-        // Dynamic update of hidden-cols
         await page.evaluate(() => {
             const t = document.getElementById('tableAttributes');
             t.setAttribute('hidden-cols', 'id,val');
         });
-        await expect(table.locator('>> thead th')).toHaveCount(1); // only name
+        await expect(dataHeaders).toHaveCount(1);
     });
 
     test('should support client-side pagination', async ({ page }) => {
-        const table = page.locator('#tablePagination');
-
-        // Setup data with 5 items, page-size is 2
         await page.evaluate(() => {
             const t = document.getElementById('tablePagination');
             t.data = [
@@ -42,36 +37,48 @@ test.describe('wc-table and wc-paginate new features', () => {
             ];
         });
 
-        const rows = table.locator('>> tbody tr');
+        const rows = page.locator('#tablePagination >> tbody tr');
         await expect(rows).toHaveCount(2);
         await expect(rows.first()).toContainText('Item 1');
 
-        // Check pagination controls
-        const nextBtn = table.locator('>> .pg-controls [data-page="next"]');
+        const nextBtn = page.locator('#tablePagination >> .pg-controls [data-page="next"]');
         await nextBtn.click();
-        
+
         await expect(rows).toHaveCount(2);
         await expect(rows.first()).toContainText('Item 3');
 
-        // Click page 3
-        const pg3Btn = table.locator('>> .pg-controls [data-page="3"]');
+        const pg3Btn = page.locator('#tablePagination >> .pg-controls [data-page="3"]');
         await pg3Btn.click();
         await expect(rows).toHaveCount(1);
         await expect(rows.first()).toContainText('Item 5');
     });
 
-    test('should work as standalone wc-paginate', async ({ page }) => {
-        const paginate = page.locator('#standalonePaginate');
-        
-        // Initial state: total 50, page-size 10 -> 5 pages
-        const pgButtons = paginate.locator('>> .pg-btn:not([data-page="prev"]):not([data-page="next"])');
-        await expect(pgButtons).toHaveCount(5);
+    test('should show col-label as column header text', async ({ page }) => {
+        await expect(page.locator('#tableColLabel >> th[data-key="code"]')).toContainText('Código');
+        await expect(page.locator('#tableColLabel >> th[data-key="amount"]')).toContainText('Valor (R$)');
+    });
 
-        const info = paginate.locator('>> .pg-info');
+
+    test('should render declarative wc-table-head from wc-table-row', async ({ page }) => {
+        const extra = page.locator('#tableDeclHead >> thead tr.wc-thead-extra');
+        await expect(extra).toBeVisible();
+        await expect(extra.locator('.badge')).toContainText('Active');
+    });
+
+    test('should inject wc-table-head and wc-table-footer rows', async ({ page }) => {
+        await expect(page.locator('#tableHeadFoot >> thead tr').nth(1)).toContainText('Band');
+        await expect(page.locator('#tableHeadFoot >> tfoot')).toContainText('Foot note');
+    });
+
+    test('should work as standalone wc-paginate', async ({ page }) => {
+        const pgButtons = page.locator('#standalonePaginate >> .pg-btn:not([data-page="prev"]):not([data-page="next"])');
+        // Page 1, delta 2, 5 pages → numeric buttons 1,2,3,5 (window + last)
+        await expect(pgButtons).toHaveCount(4);
+
+        const info = page.locator('#standalonePaginate >> .pg-info');
         await expect(info).toContainText('1–10 / 50');
 
-        // Interaction
-        await paginate.locator('>> [data-page="2"]').click();
+        await page.locator('#standalonePaginate >> [data-page="2"]').click();
         await expect(info).toContainText('11–20 / 50');
 
         // Verify event

@@ -1,12 +1,13 @@
 {
   "name": "wc-tables-kit",
-  "version": "1.0.5",
+  "version": "1.0.6",
   "description": "A flexible, slot-based, and modular vanilla web component table.",
   "type": "module",
   "main": "src/wc-table.js",
   "module": "src/wc-table.js",
   "exports": {
     ".": "./src/wc-table.js",
+    "./bus": "./src/bus.js",
     "./config": "./src/config.js",
     "./react": "./src/react.js",
     "./paginate": "./src/wc-paginate.js",
@@ -19,7 +20,9 @@
     "./plugins/image": "./src/plugins/image.js",
     "./plugins/link": "./src/plugins/link.js",
     "./plugins/object": "./src/plugins/object.js",
-    "./plugins/tags": "./src/plugins/tags.js"
+    "./plugins/tags": "./src/plugins/tags.js",
+    "./wc-table-head": "./src/wc-table-head.js",
+    "./wc-table-footer": "./src/wc-table-footer.js"
   },
   "files": [
     "src/"

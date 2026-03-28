@@ -31,6 +31,7 @@
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
             margin-bottom: 20px;
         }
+
     </style>
 </head>
 
@@ -44,7 +45,7 @@
         </header>
 
         <div class="card">
-            <wc-table id="pluginTable">
+            <wc-table id="pluginTable" hide-search>
                 <!-- Plugin Configuration -->
                 <wc-table-row col="avatar" type="image" rounded="true"></wc-table-row>
                 <wc-table-row col="website" type="link" label="Visit"></wc-table-row>
@@ -54,17 +55,38 @@
                 <wc-table-row col="info" type="expression" expr="${name} (${username})"></wc-table-row>
                 <wc-table-row col="actions" type="button" action="view" label="View Details"></wc-table-row>
 
+                <!-- Linha de filtros: ordem das <th> = checkbox + ordem das chaves em table.data[0] -->
+                <wc-table-head>
+                    <template>
+                        <tr class="wc-thead-extra wc-thead-filter">
+                            <th class="checkbox-col"></th>
+                            <th></th>
+                            <th><input type="text" data-col-filter="name" placeholder="Nome" aria-label="Filtrar por nome" autocomplete="off"></th>
+                            <th><input type="text" data-col-filter="username" placeholder="Usuário" aria-label="Filtrar por usuário" autocomplete="off"></th>
+                            <th></th>
+                            <th></th>
+                            <th><input type="text" data-col-filter="tags" placeholder="Tags" aria-label="Filtrar por tags" autocomplete="off"></th>
+                            <th></th>
+                            <th></th>
+                            <th></th>
+                        </tr>
+                    </template>
+                </wc-table-head>
+
                 <h2 slot="toolbar-left" style="margin:0">Team Members</h2>
             </wc-table>
         </div>
     </div>
 
     <script type="module" src="./wc-nav.js"></script>
-    <script type="module" src="https://unpkg.com/wc-tables-kit@1.0.5/src/wc-table.js"></script>
+    <!-- Use ../src for local dev (hide-search, etc.). For CDN after publish: unpkg.com/wc-tables-kit@^1.0.6 -->
+    <script type="module" src="../src/wc-table.js"></script>
     <script type="module">
+        import { Bus } from '../src/bus.js';
+
         const table = document.getElementById('pluginTable');
 
-        table.data = [
+        const baseData = [
             {
                 avatar: 'https://i.pravatar.cc/150?u=1',
                 name: 'Leanne Graham',
@@ -100,10 +122,140 @@
             }
         ];
 
-        table.addEventListener('action-click', (e) => {
-            const { action, item } = e.detail;
-            alert(`Action: ${action} on item ${item.name}`);
+        const colFilterState = { name: '', username: '', tags: '' };
+
+        function tagsSearchBlob(tags) {
+            if (tags == null) return '';
+            if (Array.isArray(tags)) return tags.join(' ').toLowerCase();
+            const raw = String(tags).toLowerCase();
+            try {
+                const p = JSON.parse(tags);
+                if (Array.isArray(p)) return p.map(String).join(' ').toLowerCase();
+            } catch { /* ignore */ }
+            return raw.replace(/,/g, ' ');
+        }
+
+        /** Filtro que estava focado — a tabela re-renderiza a cada tecla e o <input> é recriado; sem isto o foco some. */
+        let filterFocusKey = null;
+        let filterSelStart = 0;
+        let filterSelEnd = 0;
+
+        function captureFilterCaret(inp) {
+            filterFocusKey = inp.dataset.colFilter;
+            filterSelStart = inp.selectionStart ?? inp.value.length;
+            filterSelEnd = inp.selectionEnd ?? inp.value.length;
+        }
+
+        function restoreFilterFocus() {
+            if (!filterFocusKey) return;
+            const root = table.shadowRoot;
+            if (!root) return;
+            const el = root.querySelector(`[data-col-filter="${filterFocusKey}"]`);
+            if (!el) return;
+            el.focus();
+            if (el.setSelectionRange) {
+                try {
+                    const len = el.value.length;
+                    const a = Math.min(filterSelStart, len);
+                    const b = Math.min(filterSelEnd, len);
+                    el.setSelectionRange(a, b);
+                } catch (_) { /* ignore */ }
+            }
+        }
+
+        function applyColumnFilters() {
+            const nq = colFilterState.name.trim().toLowerCase();
+            const uq = colFilterState.username.trim().toLowerCase();
+            const tq = colFilterState.tags.trim().toLowerCase();
+
+            const filtered = baseData.filter((row) => {
+                if (nq && !String(row.name ?? '').toLowerCase().includes(nq)) return false;
+                if (uq && !String(row.username ?? '').toLowerCase().includes(uq)) return false;
+                if (tq && !tagsSearchBlob(row.tags).includes(tq)) return false;
+                return true;
+            });
+
+            table.data = filtered;
+            queueMicrotask(() => {
+                syncColFilterInputs();
+                restoreFilterFocus();
+            });
+        }
+
+        function syncColFilterInputs() {
+            const root = table.shadowRoot;
+            if (!root) return;
+            root.querySelectorAll('[data-col-filter]').forEach((el) => {
+                const key = el.dataset.colFilter;
+                if (key && colFilterState[key] !== undefined) el.value = colFilterState[key];
+            });
+        }
+
+        function injectTheadFilterStyles() {
+            const root = table.shadowRoot;
+            if (!root || root.getElementById('plugins-thead-filter-css')) return;
+            const s = document.createElement('style');
+            s.id = 'plugins-thead-filter-css';
+            s.textContent = `
+                thead tr.wc-thead-filter th { vertical-align: middle; background: #f8fafc; }
+                thead tr.wc-thead-filter input[type="text"] {
+                    width: 100%;
+                    min-width: 0;
+                    box-sizing: border-box;
+                    padding: 0.35rem 0.5rem;
+                    font-size: 0.75rem;
+                    border: 1px solid #cbd5e1;
+                    border-radius: 6px;
+                    background: #fff;
+                    text-transform: none;
+                    letter-spacing: normal;
+                    font-weight: 500;
+                    user-select: text;
+                    -webkit-user-select: text;
+                    pointer-events: auto;
+                }
+            `;
+            root.appendChild(s);
+        }
+
+        let colFiltersBound = false;
+        function attachColumnFilterUI() {
+            const root = table.shadowRoot;
+            if (!root) return;
+            injectTheadFilterStyles();
+            const host = root.querySelector('.table-container');
+            if (host && !colFiltersBound) {
+                colFiltersBound = true;
+                host.addEventListener('input', (e) => {
+                    const inp = e.target.closest('[data-col-filter]');
+                    if (!inp || !host.contains(inp)) return;
+                    captureFilterCaret(inp);
+                    colFilterState[inp.dataset.colFilter] = inp.value;
+                    applyColumnFilters();
+                });
+                host.addEventListener('focusout', (e) => {
+                    if (!e.target.matches('[data-col-filter]')) return;
+                    requestAnimationFrame(() => {
+                        const active = table.shadowRoot?.activeElement;
+                        if (!active?.matches?.('[data-col-filter]')) filterFocusKey = null;
+                    });
+                });
+            }
+            syncColFilterInputs();
+        }
+
+        table.data = [...baseData];
+        queueMicrotask(attachColumnFilterUI);
+
+        const offBus = Bus(table, {
+            'action-click': (e) => {
+                const { action, item } = e.detail;
+                alert(`Action: ${action} on item ${item.name}`);
+            },
+            'sort-changed': () => queueMicrotask(syncColFilterInputs),
+            'updated': () => queueMicrotask(syncColFilterInputs),
         });
+        window.addEventListener('pagehide', offBus, { once: true });
     </script>
 </body>
 

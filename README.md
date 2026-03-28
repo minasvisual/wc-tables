@@ -8,11 +8,13 @@ A flexible, slot-based, and modular **Vanilla Web Component Table**. Built with 
 - **Custom Plugin Registry**: Register your own formatting logic.
 - **Row Actions**: Add 'Edit', 'Delete', or custom buttons to every row with full data context.
 - **Bulk Selection**: Integrated checkbox system with event reporting.
-- **Dynamic Sorting & Filtering**: Local data management out of the box.
+- **Dynamic Sorting & Filtering**: Local data management out of the box; optional `hide-search` keeps events while you supply your own filter UI.
 - **Client-Side Pagination**: Add `page-size` attribute to paginate large datasets without any server interaction.
 - **Inline JSON Data**: Pass initial data directly via the `data` HTML attribute — no JavaScript required for static datasets.
 - **Hidden Columns**: Use `hidden-cols` to hide specific columns without removing them from the data, via a comma-separated list or JSON array.
 - **`<wc-paginate>`**: Standalone pagination control component — use it with server-side mode or any custom data list.
+- **`<wc-table-head>` / `<wc-table-footer>`**: Extra `<thead>` / `<tfoot>` rows via `<template>` (manual `<tr>`) or declarative child `<wc-table-row>` rows; optional `col-label` / `header-text` on columns.
+- **`Bus` helper** (`wc-tables-kit/bus`): Map of event names → handlers with a single `disconnect()` for teardown (SPA / `pagehide`).
 
 ## Demo
 
@@ -176,6 +178,65 @@ table.addEventListener('page-changed', (e) => {
 
 > **Note:** `page-size` is a client-side feature and is independent of `server-side` mode (which manages its own data slicing via the API).
 
+## Hiding the default search (`hide-search`)
+
+Add the boolean attribute **`hide-search`** to remove the built-in toolbar search field. Filtering events still run when you update the query from code:
+
+| Mechanism | Behavior |
+| --- | --- |
+| `before-filter` | `detail.query` — same as when using the default input |
+| `after-filter` | `detail.results` — filtered row array (or full data in `server-side` mode) |
+
+**Programmatic query (custom filter UI):**
+
+```html
+<wc-table id="t" hide-search>
+    ...
+</wc-table>
+<input type="search" id="q" />
+<script type="module">
+    const table = document.getElementById('t');
+    document.getElementById('q').addEventListener('input', (e) => {
+        table.filterQuery = e.target.value;
+    });
+</script>
+```
+
+- **`table.filterQuery`** (get/set) mirrors the built-in search: setting it dispatches `before-filter`, applies the client filter (unless `server-side` is set), then dispatches `after-filter`.
+- With **`server-side`**, the table does not narrow rows locally; use `before-filter` / `after-filter` to load data from an API as in [Server-Side Mode](#server-side-mode).
+
+## Event helper — `Bus`
+
+Import: `import { Bus } from 'wc-tables-kit/bus'`.
+
+Registers several listeners on a `<wc-table>` (or any element) from one object. Returns **`disconnect()`** — call it when leaving the route or on `pagehide` to remove every handler (`AbortController` when available).
+
+```javascript
+import { Bus } from 'wc-tables-kit/bus';
+
+const off = Bus(document.getElementById('myTable'), {
+  'action-click': (e) => console.log(e.detail.action, e.detail.item),
+  'sort-changed': (e) => console.log(e.detail),
+  'updated': (e) => console.log(e.detail.data),
+});
+
+window.addEventListener('pagehide', off, { once: true });
+```
+
+The first argument may be a **CSS selector** (passed to `document.querySelector`) or an **element**. Non-function values in the map are ignored.
+
+## Extra header & footer rows (`wc-table-head` / `wc-table-footer`)
+
+Optional children of `<wc-table>` add rows **below** the main sort header (`<thead>`) or inside `<tfoot>`.
+
+**1. Manual row(s)** — put a `<template>` (or `<table>`) inside `wc-table-head` / `wc-table-footer` with one or more `<tr>` elements. Cloned rows must align with the table: checkbox column, optional action columns, then one `<th>` or `<td>` per visible data key (same order as `Object.keys(data[0])` minus `hidden-cols`). See [examples/plugins.html](./examples/plugins.html) for per-column filter inputs in an extra header row.
+
+**2. Declarative row** — if the section has **no** `<template>`/`<table>` but has direct child `<wc-table-row col="...">` elements, one extra `<tr class="wc-thead-extra">` is built automatically. Attributes on those rows merge with global column config; use `header-text` for static cell text, or `type` + plugin (e.g. `expression`) for rich cells.
+
+**Column header label:** on any top-level `<wc-table-row>`, set **`col-label="Displayed title"`** to override the default header text for that column.
+
+**`expression` in declarative `wc-table-head`:** `${field}` placeholders resolve using the **first visible row** after filtering (`_filteredData[0]`), not a dedicated row index.
+
 ## Inline JSON Data (HTML Attribute)
 
 For static content or server-rendered pages, you can pass the initial data directly via the `data` attribute — no JavaScript required:
@@ -298,7 +359,7 @@ pg.setAttribute('total', '200'); // live update
 
 ## React & Next.js Integration
 
-To use `wc-table` in a React or Next.js environment, you can use the provided adapter that handles property mapping (essential for the `data` property) and event listeners.
+To use `wc-table` in a React or Next.js environment, you can use the provided adapter that maps **`data`** and **`filterQuery`** to DOM properties, wires **`onPageChanged`** to `page-changed` (client-side pagination), and attaches other `on*` handlers to the matching custom events. Use **`hide-search`** (or `hide-search=""`) like any forwarded attribute together with **`filterQuery`** for a controlled custom filter.
 
 ### Using the Adapter
 

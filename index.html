@@ -77,8 +77,23 @@
             <!-- Column Configuration (Plugins) -->
             <wc-table-row col="name" type="uppercase"></wc-table-row>
             <wc-table-row col="created_at" type="date" format="en-US"></wc-table-row>
-            <wc-table-row col="salary" type="currency" format="USD"></wc-table-row>
+            <wc-table-row col="salary" type="currency" format="USD" col-label="Compensation"></wc-table-row>
             <wc-table-row col="status" type="badge"></wc-table-row>
+
+            <wc-table-head>
+              <template>
+                  <tr>
+                    <th></th>
+                    <th></th>
+                    <th colspan="10">Employees overview</th>
+                  </tr>
+                </template>
+            </wc-table-head>
+            <wc-table-footer>
+                <template>
+                    <tr><td colspan="10">Extra thead/tfoot via &lt;wc-table-head&gt; and &lt;wc-table-footer&gt;</td></tr>
+                </template>
+            </wc-table-footer>
 
             <!-- Actions Template -->
             <template slot="right-actions">

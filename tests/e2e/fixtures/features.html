@@ -19,7 +19,37 @@
         <wc-table-row col="name"></wc-table-row>
     </wc-table>
 
-    <!-- 3. Standalone paginate component -->
+    <!-- 3. col-label overrides header text -->
+    <wc-table id="tableColLabel"
+              data='[{"code":"A1","amount":100}]'>
+        <wc-table-row col="code" col-label="Código"></wc-table-row>
+        <wc-table-row col="amount" col-label="Valor (R$)"></wc-table-row>
+    </wc-table>
+
+    <!-- 5a. Declarative wc-table-head (wc-table-row only) -->
+    <wc-table id="tableDeclHead" data='[{"k":"cell"}]'>
+        <wc-table-row col="k"></wc-table-row>
+        <wc-table-head>
+            <wc-table-row col="k" type="badge" header-text="Active"></wc-table-row>
+        </wc-table-head>
+    </wc-table>
+
+    <!-- 5. wc-table-head / wc-table-footer -->
+    <wc-table id="tableHeadFoot" data='[{"x":1}]'>
+        <wc-table-row col="x"></wc-table-row>
+        <wc-table-head>
+            <template>
+                <tr><th colspan="2">Band</th></tr>
+            </template>
+        </wc-table-head>
+        <wc-table-footer>
+            <template>
+                <tr><td colspan="2">Foot note</td></tr>
+            </template>
+        </wc-table-footer>
+    </wc-table>
+
+    <!-- 4. Standalone paginate component -->
     <wc-paginate id="standalonePaginate" total="50" page-size="10"></wc-paginate>
 
     <script type="module" src="../../../src/wc-table.js"></script>

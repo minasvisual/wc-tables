@@ -26,7 +26,10 @@ wc-tables/
 │   ├── wc-table-row.js      # Column config element (<wc-table-row>)
 │   ├── wc-paginate.js       # Standalone pagination component (<wc-paginate>)
 │   ├── config.js            # Global Config: i18n, plugin registry
+│   ├── bus.js               # Bus(target, handlers) → disconnect(); event map helper
 │   ├── react.js             # React/Next.js adapter (no JSX, pure ESM)
+│   ├── wc-table-head.js     # <wc-table-head> host (extra thead content)
+│   ├── wc-table-footer.js   # <wc-table-footer> host (tfoot content)
 │   └── plugins/
 │       ├── badge.js         # Colored badge/pill
 │       ├── button.js        # Action button
@@ -79,7 +82,9 @@ Alternatively, pass a JSON array as an HTML attribute (useful for static/SSR con
 ```
 The JS property takes priority over the attribute when both are present.
 
-**Observed attributes:** `server-side`, `data`, `page-size`, `hidden-cols`
+**Observed attributes:** `server-side`, `data`, `page-size`, `hidden-cols`, `hide-search`
+
+**Public filter API:** `filterQuery` get/set — same pipeline as the default search (`before-filter` → apply → `after-filter`). Use with `hide-search` for a custom filter UI.
 
 **Computed getters (pagination):**
 - `_pageSize` → parses `page-size` attribute as integer; returns `0` if absent (pagination off)
@@ -92,8 +97,9 @@ The JS property takes priority over the attribute when both are present.
 **Lifecycle methods:**
 - `connectedCallback()` → calls `render()`, sets up a `MutationObserver` on child `<wc-table-row>` elements
 - `disconnectedCallback()` → disconnects the observer
-- `render()` → full re-render of Shadow DOM (only called on first mount or config changes)
-- `renderContent()` → re-renders only the table body (called after filter/sort)
+- `constructor()` → **`shadowRoot.addEventListener('click', …)` for `action-click` delegation** — register here only; **never** attach the same listener inside `render()` or each full re-render will stack handlers and duplicate `action-click`.
+- `render()` → replaces shadow `innerHTML` (toolbar + `#tableContent`); runs on mount, `hide-search` changes, and `server-side` sort header refresh. Does **not** re-bind row action clicks (handled in constructor).
+- `renderContent()` → replaces only `#tableContent` innerHTML (table + pagination); called after filter/sort/pagination and most data updates
 
 **CSS:** Injected via `<link>` pointing to `./wc-table.css` resolved with `import.meta.url`.
 
@@ -117,6 +123,28 @@ Registered as `wc-table-row` using a guard: `if (!customElements.get('wc-table-r
 | `expr` | Template string for expression plugin (e.g. `${name} (${role})`) |
 | `class` | Extra CSS class forwarded to the plugin renderer |
 | `rounded`, `width`, `height` | Image plugin options |
+| `col-label` | Overrides the sortable header label for that column (`Config.t(key)` fallback) |
+| `header-text` | Declarative `wc-table-head` only: static text for that column’s extra header cell |
+
+---
+
+### `<wc-table-head>` / `<wc-table-footer>` — `wc-table-head.js`, `wc-table-footer.js`
+
+Light-DOM hosts; content is read when the table builds `<thead>` / `<tfoot>`.
+
+**Modes (see `_collectSectionRows` / `_appendDeclarativeHeadRow` in `wc-table.js`):**
+
+1. **Manual:** `<template>` (or `<table>`) containing `<tr>…</tr>`. Rows are **cloned** into the real table. Host is responsible for column alignment (checkbox + optional action cols + one cell per data key in key order).
+2. **Declarative:** No template/table, but `:scope > wc-table-row` children. One synthetic `<tr class="wc-thead-extra">` is built; each `col` maps to a `<th>`. Merged config = global column `<wc-table-row>` + head row attributes. Plugins run with **`item` = `_filteredData[0] ?? {}`** so `type="expression"` and `${field}` work using the **first visible filtered row** (not an arbitrary row index).
+
+Extra thead rows use CSS `thead tr:not(:first-child) th` so sort cursor/hover does not apply.
+
+---
+
+### `Bus` — `src/bus.js`
+
+**Export:** `wc-tables-kit/bus`  
+`Bus(target, handlers)` where `target` is an `Element` or selector string; `handlers` maps event type → function. Returns **`disconnect()`** (idempotent): `AbortController.abort()` or `removeEventListener` per pair. Use for grouping `action-click`, `sort-changed`, `updated`, etc., and call `disconnect()` on SPA teardown or `pagehide`.
 
 ---
 
@@ -378,11 +406,13 @@ export default function Page() {
 | React prop | DOM equivalent |
 |---|---|
 | `data` | `.data` property (set via `useEffect`) |
+| `filterQuery` | `.filterQuery` property when prop is passed (omit prop to avoid overwriting table filter state) |
 | `className` | `class` attribute |
 | `onActionClick` | `addEventListener('action-click', ...)` |
 | `onRowSelected` | `addEventListener('row-selected', ...)` |
 | `onSelectionChanged` | `addEventListener('selection-changed', ...)` |
 | `onSortChanged` | `addEventListener('sort-changed', ...)` |
+| `onPageChanged` | `addEventListener('page-changed', ...)` |
 | `onBeforeFilter` | `addEventListener('before-filter', ...)` |
 | `onAfterFilter` | `addEventListener('after-filter', ...)` |
 | `onUpdated` | `addEventListener('updated', ...)` |
@@ -418,7 +448,7 @@ Then callers can override: `wc-table { --wc-table-header-bg: #1e293b; }`.
 | File | What it demonstrates |
 |---|---|
 | `index.html` | Basic table with most features enabled |
-| `examples/plugins.html` | All 9 column plugins |
+| `examples/plugins.html` | All column plugins, `hide-search`, `Bus`, extra thead filter row (manual template), local `../src/wc-table.js` import |
 | `examples/menus.html` | Row actions, toolbar slots, `action-click` events |
 | `examples/placeholder.html` | Server-side mode with async data fetching |
 | `examples/react.html` | React adapter (no build step, CDN-based) |
@@ -438,6 +468,10 @@ Then callers can override: `wc-table { --wc-table-header-bg: #1e293b; }`.
 - **Adding a plugin does not auto-re-render.** You must set `.data` again after calling `Config.registerPlugin()`.
 - **`import.meta.url`** is used to resolve the CSS file path. In bundlers that don't support this (older Next.js configs), the CSS path may break — handle with a `try/catch` or load CSS separately.
 - **The `guard` in `wc-table-row.js`** (`if (!customElements.get('wc-table-row'))`) prevents double-registration errors if the module is imported multiple times.
+- **`hide-search` + `filterQuery`:** Default toolbar search is omitted when the attribute is present; use `table.filterQuery = '…'` (or `before-filter` / `after-filter`) for custom UIs. Same pipeline as the built-in input.
+- **Custom inputs inside cloned thead rows:** Assigning `table.data` triggers `renderContent()` and rebuilds the table; filter `<input>` nodes are recreated — restore focus/caret after render if the UX requires typing (see `examples/plugins.html`).
+- **CDN vs local src:** Examples that rely on `hide-search`, `Bus`, or other unreleased bits should import `../src/wc-table.js` (or a published npm version that includes those changes), not an old unpkg pin.
+- **Declarative `wc-table-head` + `expression`:** Placeholders use the first filtered row as data context; document this if product needs another row.
 
 ---
 
@@ -447,4 +481,5 @@ Then callers can override: `wc-table { --wc-table-header-bg: #1e293b; }`.
 2. **New attribute on `wc-table`:** Add to `observedAttributes` array and handle in `attributeChangedCallback`.
 3. **New i18n key:** Add to both `en` and `pt-br` dictionaries in `config.js`.
 4. **New event:** Dispatch via `this.dispatchEvent(new CustomEvent('event-name', { detail: {...}, bubbles: true, composed: true }))`.
-5. **New example:** Add an `.html` file to `examples/` and link it in `examples/wc-nav.js`.
+5. **New public module:** Add `"./your-export": "./src/your-file.js"` under `package.json` → `exports`; document in `README.md` and this file.
+6. **New example:** Add an `.html` file to `examples/` and link it in `examples/wc-nav.js`.

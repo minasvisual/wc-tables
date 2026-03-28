@@ -114,6 +114,16 @@ th:hover {
     background: #e2e8f0;
 }
 
+/* Extra thead rows (wc-table-head declarative or manual clones): not sortable */
+thead tr:not(:first-child) th {
+    cursor: default;
+    user-select: auto;
+}
+
+thead tr:not(:first-child) th:hover {
+    background: #f1f5f9;
+}
+
 th .sort-icon {
     display: inline-block;
     vertical-align: middle;
@@ -339,3 +349,27 @@ tr:hover td {
 tr {
     animation: fadeIn 0.3s ease forwards;
 }
+::slotted(wc-table-head),
+::slotted(wc-table-footer) {
+    display: none;
+}
+
+tfoot th,
+tfoot td {
+    padding: .5rem;
+    border-top: 2px solid #e2e8f0;
+    background: #f8fafc;
+    font-size: 0.85rem;
+    font-weight: 600;
+}
+
+tfoot th {
+    cursor: default;
+    text-transform: none;
+}
+
+tfoot th:hover,
+tfoot td:hover {
+    background: #f8fafc;
+}
+

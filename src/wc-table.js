@@ -9,6 +9,8 @@ import { TagsPlugin } from './plugins/tags.js';
 import { ButtonPlugin } from './plugins/button.js';
 import { ExpressionPlugin } from './plugins/expression.js';
 import './wc-table-row.js';
+import './wc-table-head.js';
+import './wc-table-footer.js';
 
 const _HTMLElement = typeof HTMLElement !== 'undefined' ? HTMLElement : class {};
 
@@ -16,6 +18,8 @@ class WcTable extends _HTMLElement {
     constructor() {
         super();
         this.attachShadow({ mode: 'open' });
+        // One delegation listener on the shadow root — render() resets innerHTML but must not stack listeners.
+        this.shadowRoot.addEventListener('click', (e) => this._handleActionClick(e));
         this._data = [];
         this._filteredData = [];
         this._sortConfig = { key: null, direction: 'asc' };
@@ -58,6 +62,19 @@ class WcTable extends _HTMLElement {
         return this._data;
     }
 
+    /** Current filter text (same as the built-in search when visible). */
+    get filterQuery() {
+        return this._filterText;
+    }
+
+    /**
+     * Sets the filter string, dispatches `before-filter`, then applies filtering (`after-filter`).
+     * Use with `hide-search` and your own controls for custom filter UIs.
+     */
+    set filterQuery(value) {
+        this._setFilterQueryAndApply(String(value ?? ''));
+    }
+
     connectedCallback() {
         this._upgradeProperty('data');
 
@@ -78,12 +95,14 @@ class WcTable extends _HTMLElement {
         this.render();
         this.dispatchEvent(new CustomEvent('after-mount', { bubbles: true, composed: true }));
 
-        // Watch for dynamic configuration changes
-        this._observer = new MutationObserver(() => {
-            this._updateColumnConfigs();
-            this.renderContent();
+        // Watch for dynamic configuration changes (head/footer subtree + top-level config nodes)
+        this._observer = new MutationObserver((mutations) => {
+            if (this._mutationAffectsTableStructure(mutations)) {
+                this._updateColumnConfigs();
+                this.renderContent();
+            }
         });
-        this._observer.observe(this, { childList: true });
+        this._observer.observe(this, { childList: true, subtree: true });
     }
 
     _upgradeProperty(prop) {
@@ -98,9 +117,36 @@ class WcTable extends _HTMLElement {
         if (this._observer) this._observer.disconnect();
     }
 
+    /** @param {MutationRecord[]} mutations */
+    _mutationAffectsTableStructure(mutations) {
+        for (const m of mutations) {
+            if (m.type !== 'childList') continue;
+            const inHeadFootSubtree = (el) => {
+                if (!el || el.nodeType !== 1) return false;
+                return el.matches?.('wc-table-head, wc-table-footer')
+                    || !!el.closest?.('wc-table-head')
+                    || !!el.closest?.('wc-table-footer');
+            };
+            const topConfig = (el) => {
+                if (!el || el.nodeType !== 1) return false;
+                return el.parentElement === this
+                    && el.matches?.('wc-table-row, wc-table-head, wc-table-footer');
+            };
+            for (const n of m.addedNodes) {
+                if (topConfig(n) || inHeadFootSubtree(n)) return true;
+            }
+            for (const n of m.removedNodes) {
+                if (topConfig(n) || inHeadFootSubtree(n)) return true;
+            }
+            const t = m.target;
+            if (t && t.nodeType === 1 && inHeadFootSubtree(t)) return true;
+        }
+        return false;
+    }
+
     _updateColumnConfigs() {
         this._columnConfigs = {};
-        const rows = this.querySelectorAll('wc-table-row');
+        const rows = this.querySelectorAll(':scope > wc-table-row');
         rows.forEach(row => {
             const config = {};
             // Collect all attributes
@@ -115,7 +161,7 @@ class WcTable extends _HTMLElement {
     }
 
     static get observedAttributes() {
-        return ['server-side', 'data', 'page-size', 'hidden-cols'];
+        return ['server-side', 'data', 'page-size', 'hidden-cols', 'hide-search'];
     }
 
     /** Returns a Set of column keys that should be hidden. */
@@ -178,6 +224,21 @@ class WcTable extends _HTMLElement {
         if (name === 'hidden-cols' && newValue !== oldValue) {
             this.renderContent();
         }
+        if (name === 'hide-search' && newValue !== oldValue) {
+            this.render();
+        }
+    }
+
+    _setFilterQueryAndApply(query) {
+        this._filterText = query;
+        this.dispatchEvent(new CustomEvent('before-filter', {
+            detail: { query: this._filterText },
+            bubbles: true,
+            composed: true
+        }));
+        this._applyFilters();
+        const input = this.shadowRoot?.getElementById('searchInput');
+        if (input) input.value = this._filterText;
     }
 
     _applyFilters() {
@@ -291,18 +352,19 @@ class WcTable extends _HTMLElement {
     }
 
     _handleSearch(e) {
-        this._filterText = e.target.value;
-        this.dispatchEvent(new CustomEvent('before-filter', { 
-            detail: { query: this._filterText },
-            bubbles: true, 
-            composed: true 
-        }));
-        this._applyFilters();
+        this._setFilterQueryAndApply(e.target.value);
     }
 
     render() {
         const cssPath = new URL('./wc-table.css', import.meta.url).href;
-        
+        const hideSearch = this.hasAttribute('hide-search');
+        const searchBlock = hideSearch
+            ? ''
+            : `
+                        <div class="search-container">
+                            <input type="text" class="search-input" placeholder="${Config.t('searchPlaceholder')}" id="searchInput">
+                        </div>`;
+
         this.shadowRoot.innerHTML = `
             <link rel="stylesheet" href="${cssPath}">
             <div class="table-wrapper">
@@ -317,9 +379,7 @@ class WcTable extends _HTMLElement {
                         <slot name="toolbar-center"></slot>
                     </div>
                     <div class="toolbar-right">
-                        <div class="search-container">
-                            <input type="text" class="search-input" placeholder="${Config.t('searchPlaceholder')}" id="searchInput">
-                        </div>
+                        ${searchBlock}
                         <slot name="toolbar-right"></slot>
                     </div>
                 </div>
@@ -334,10 +394,11 @@ class WcTable extends _HTMLElement {
             </div>
         `;
 
-        this.shadowRoot.getElementById('searchInput').addEventListener('input', (e) => this._handleSearch(e));
-        
-        // Action delegation (Added only once)
-        this.shadowRoot.addEventListener('click', (e) => this._handleActionClick(e));
+        const searchInput = this.shadowRoot.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.value = this._filterText;
+            searchInput.addEventListener('input', (e) => this._handleSearch(e));
+        }
 
         this._setupEventListeners();
     }
@@ -454,6 +515,79 @@ class WcTable extends _HTMLElement {
         return value;
     }
 
+    /** @param {Element} el */
+    _configFromWcTableRow(el) {
+        const config = {};
+        if (!el || !el.attributes) return config;
+        Array.from(el.attributes).forEach(attr => {
+            config[attr.name] = attr.value;
+        });
+        return config;
+    }
+
+    /** Same visible label logic as the primary header cell (without sort UI). */
+    _headerTitleText(key) {
+        const colCfg = this._columnConfigs[key];
+        const colLabel = colCfg && typeof colCfg['col-label'] === 'string'
+            ? colCfg['col-label'].trim()
+            : '';
+        return colLabel || Config.t(key);
+    }
+
+    /**
+     * One extra thead row from :scope > wc-table-row inside wc-table-head (no template/table).
+     */
+    _appendDeclarativeHeadRow(thead, headHost, keys, hasLeftActions, hasRightActions) {
+        const headByCol = {};
+        headHost.querySelectorAll(':scope > wc-table-row').forEach(row => {
+            const cfg = this._configFromWcTableRow(row);
+            if (cfg.col) headByCol[cfg.col] = cfg;
+        });
+
+        const plugins = { ...this._plugins, ...Config.plugins };
+        const tr = document.createElement('tr');
+        tr.className = 'wc-thead-extra';
+
+        const thCheck = document.createElement('th');
+        thCheck.className = 'checkbox-col';
+        tr.appendChild(thCheck);
+
+        if (hasLeftActions) {
+            const th = document.createElement('th');
+            th.className = 'actions-col';
+            tr.appendChild(th);
+        }
+
+        const itemForHeadPlugins = this._filteredData[0] ?? {};
+
+        keys.forEach(key => {
+            const th = document.createElement('th');
+            const headCfg = headByCol[key];
+            if (headCfg) {
+                const globalCfg = this._columnConfigs[key] || {};
+                const merged = { ...globalCfg, ...headCfg };
+                const rawHeaderText = typeof merged['header-text'] === 'string'
+                    ? merged['header-text'].trim()
+                    : '';
+                const value = rawHeaderText || this._headerTitleText(key);
+                if (merged.type && plugins[merged.type]) {
+                    th.innerHTML = plugins[merged.type].render(value, merged, itemForHeadPlugins);
+                } else {
+                    th.textContent = value;
+                }
+            }
+            tr.appendChild(th);
+        });
+
+        if (hasRightActions) {
+            const th = document.createElement('th');
+            th.className = 'actions-col';
+            tr.appendChild(th);
+        }
+
+        thead.appendChild(tr);
+    }
+
     _renderTable() {
         if (this._filteredData.length === 0 && this._data.length > 0) {
             return `<div class="no-results">${Config.t('noResults')}</div>`;
@@ -495,7 +629,12 @@ class WcTable extends _HTMLElement {
             if (this._sortConfig.key === key) {
                 th.className = 'sort-' + this._sortConfig.direction;
             }
-            th.innerHTML = `${Config.t(key)} <span class="sort-icon"></span>`;
+            const colCfg = this._columnConfigs[key];
+            const colLabel = colCfg && typeof colCfg['col-label'] === 'string'
+                ? colCfg['col-label'].trim()
+                : '';
+            const headerText = colLabel || Config.t(key);
+            th.innerHTML = `${headerText} <span class="sort-icon"></span>`;
             headerRow.appendChild(th);
         });
 
@@ -507,6 +646,16 @@ class WcTable extends _HTMLElement {
         }
 
         thead.appendChild(headerRow);
+        const headHost = this.querySelector(':scope > wc-table-head');
+        const manualHeadRows = this._collectSectionRows(headHost);
+        if (manualHeadRows.length) {
+            manualHeadRows.forEach(tr => thead.appendChild(tr.cloneNode(true)));
+        } else if (headHost) {
+            const declRows = headHost.querySelectorAll(':scope > wc-table-row');
+            if (declRows.length) {
+                this._appendDeclarativeHeadRow(thead, headHost, keys, hasLeftActions, hasRightActions);
+            }
+        }
         table.appendChild(thead);
 
         // Body — only render current page slice
@@ -551,8 +700,25 @@ class WcTable extends _HTMLElement {
         });
         table.appendChild(tbody);
 
+        const footHost = this.querySelector(':scope > wc-table-footer');
+        const footRows = this._collectSectionRows(footHost);
+        if (footRows.length) {
+            const tfoot = document.createElement('tfoot');
+            footRows.forEach(tr => tfoot.appendChild(tr.cloneNode(true)));
+            table.appendChild(tfoot);
+        }
+
         // Return the HTML string (for innerHTML compatibility in renderContent)
         return table.outerHTML;
+    }
+
+    _collectSectionRows(host) {
+        if (!host) return [];
+        const tpl = host.querySelector(':scope > template');
+        if (tpl) return Array.from(tpl.content.querySelectorAll('tr'));
+        const tbl = host.querySelector(':scope > table');
+        if (tbl) return Array.from(tbl.querySelectorAll('tr'));
+        return Array.from(host.querySelectorAll(':scope > tr'));
     }
 
     _cloneActionContent(element) {

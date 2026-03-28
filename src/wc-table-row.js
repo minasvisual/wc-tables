@@ -12,6 +12,8 @@ export class WcTableRow extends _HTMLElement {
     get config() {
         return {
             col: this.getAttribute('col'),
+            'col-label': this.getAttribute('col-label'),
+            'header-text': this.getAttribute('header-text'),
             type: this.getAttribute('type'),
             format: this.getAttribute('format'),
             class: this.getAttribute('class')

@@ -41,6 +41,7 @@ const eventMapping = {
     'rowselected':      'row-selected',
     'selectionchanged': 'selection-changed',
     'sortchanged':      'sort-changed',
+    'pagechanged':      'page-changed',
     'beforefilter':     'before-filter',
     'afterfilter':      'after-filter',
     'beforemount':      'before-mount',
@@ -57,13 +58,19 @@ const eventMapping = {
  *   onRowSelected    fn      'row-selected' custom event
  *   onSelectionChanged fn    'selection-changed' custom event
  *   onSortChanged    fn      'sort-changed' custom event
+ *   onPageChanged    fn      'page-changed' custom event (client-side pagination)
  *   onBeforeFilter   fn      'before-filter' custom event
  *   onAfterFilter    fn      'after-filter' custom event
  *   onUpdated        fn      'updated' custom event
+ *   filterQuery      string  optional; sets DOM property .filterQuery (with hide-search / custom filter UI)
  *   className        string  forwarded as 'class' attribute
+ *   hide-search      boolean attribute forwarded (omit default search UI; combine with filterQuery prop)
  *   ...rest                  any other attribute forwarded to <wc-table>
  */
-export const WcTable = forwardRef(function WcTable({ data, children, className, style, ...props }, ref) {
+export const WcTable = forwardRef(function WcTable(
+    { data, filterQuery, children, className, style, ...props },
+    ref,
+) {
     const innerRef = useRef(null);
 
     useImperativeHandle(ref, () => innerRef.current);
@@ -74,6 +81,13 @@ export const WcTable = forwardRef(function WcTable({ data, children, className, 
             innerRef.current.data = data ?? [];
         }
     }, [data]);
+
+    // Same as built-in search pipeline; omit prop to leave wc-table filter text untouched
+    useEffect(() => {
+        if (innerRef.current && filterQuery !== undefined) {
+            innerRef.current.filterQuery = filterQuery;
+        }
+    }, [filterQuery]);
 
     // Map onXxx props to native custom-event listeners
     useEffect(() => {
@@ -124,10 +138,20 @@ export function WcTableRow({ children, ...props }) {
     return createElement('wc-table-row', props, children);
 }
 
+export function WcTableHead({ children, ...props }) {
+    return createElement('wc-table-head', props, children);
+}
+WcTableHead.displayName = 'WcTableHead';
+
+export function WcTableFooter({ children, ...props }) {
+    return createElement('wc-table-footer', props, children);
+}
+WcTableFooter.displayName = 'WcTableFooter';
+
 WcTableRow.displayName = 'WcTableRow';
 
 // Expose to window for CDN browser usage
 if (typeof window !== 'undefined') {
-    window.WcTableReact = { WcTable, WcTableRow };
+    window.WcTableReact = { WcTable, WcTableRow, WcTableHead, WcTableFooter };
     window.dispatchEvent(new CustomEvent('wc-table-react-ready'));
 }
