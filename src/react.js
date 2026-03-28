@@ -34,10 +34,11 @@ if (!_React) {
     throw new Error('[wc-tables-kit] React not found. Load React UMD before this script, or install react as a peer dependency.');
 }
 
-const { useEffect, useRef, useImperativeHandle, forwardRef, createElement } = _React;
+const { useEffect, useLayoutEffect, useRef, useImperativeHandle, forwardRef, createElement } = _React;
 
 const eventMapping = {
     'actionclick':      'action-click',
+    'columnfilter':     'column-filter',
     'rowselected':      'row-selected',
     'selectionchanged': 'selection-changed',
     'sortchanged':      'sort-changed',
@@ -59,6 +60,7 @@ const eventMapping = {
  *   onSelectionChanged fn    'selection-changed' custom event
  *   onSortChanged    fn      'sort-changed' custom event
  *   onPageChanged    fn      'page-changed' custom event (client-side pagination)
+ *   onColumnFilter   fn      'column-filter' (thead `col-filter` plugin / `.wc-col-filter-input`)
  *   onBeforeFilter   fn      'before-filter' custom event
  *   onAfterFilter    fn      'after-filter' custom event
  *   onUpdated        fn      'updated' custom event
@@ -75,15 +77,16 @@ export const WcTable = forwardRef(function WcTable(
 
     useImperativeHandle(ref, () => innerRef.current);
 
-    // Set data as a DOM property (arrays/objects cannot be serialized as attributes)
-    useEffect(() => {
+    // useLayoutEffect: apply before parent useLayoutEffect runs so shadow DOM matches `data`
+    // when hosts sync controlled UI (e.g. col-filter inputs) in the same commit.
+    useLayoutEffect(() => {
         if (innerRef.current) {
             innerRef.current.data = data ?? [];
         }
     }, [data]);
 
     // Same as built-in search pipeline; omit prop to leave wc-table filter text untouched
-    useEffect(() => {
+    useLayoutEffect(() => {
         if (innerRef.current && filterQuery !== undefined) {
             innerRef.current.filterQuery = filterQuery;
         }

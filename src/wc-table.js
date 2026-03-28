@@ -8,6 +8,7 @@ import { ObjectPlugin } from './plugins/object.js';
 import { TagsPlugin } from './plugins/tags.js';
 import { ButtonPlugin } from './plugins/button.js';
 import { ExpressionPlugin } from './plugins/expression.js';
+import { ColumnFilterPlugin } from './plugins/column-filter.js';
 import './wc-table-row.js';
 import './wc-table-head.js';
 import './wc-table-footer.js';
@@ -20,6 +21,7 @@ class WcTable extends _HTMLElement {
         this.attachShadow({ mode: 'open' });
         // One delegation listener on the shadow root — render() resets innerHTML but must not stack listeners.
         this.shadowRoot.addEventListener('click', (e) => this._handleActionClick(e));
+        this.shadowRoot.addEventListener('input', (e) => this._handleColumnFilterInput(e));
         this._data = [];
         this._filteredData = [];
         this._sortConfig = { key: null, direction: 'asc' };
@@ -39,6 +41,7 @@ class WcTable extends _HTMLElement {
             'tags': TagsPlugin,
             'button': ButtonPlugin,
             'expression': ExpressionPlugin,
+            'col-filter': ColumnFilterPlugin,
             ...Config.plugins // Merge custom plugins
         };
     }
@@ -181,9 +184,19 @@ class WcTable extends _HTMLElement {
         return val > 0 ? val : 0; // 0 = pagination disabled
     }
 
+    /** Rows actually rendered in tbody (excludes `__wcEmptyFilter` layout-only rows). */
+    get _displayRowCount() {
+        return this._filteredData.reduce(
+            (n, item) => n + (this._isLayoutOnlyRow(item) ? 0 : 1),
+            0,
+        );
+    }
+
     get _totalPages() {
         if (!this._pageSize) return 1;
-        return Math.max(1, Math.ceil(this._filteredData.length / this._pageSize));
+        const n = this._displayRowCount;
+        if (n <= 0) return 1;
+        return Math.ceil(n / this._pageSize);
     }
 
     _goToPage(page) {
@@ -252,7 +265,8 @@ class WcTable extends _HTMLElement {
 
         const query = this._filterText.toLowerCase();
         this._filteredData = this._data.filter(item => {
-            return Object.values(item).some(val => 
+            if (this._isLayoutOnlyRow(item)) return true;
+            return Object.values(item).some(val =>
                 String(val).toLowerCase().includes(query)
             );
         });
@@ -287,10 +301,13 @@ class WcTable extends _HTMLElement {
         const isChecked = e.target.checked;
         const checkboxes = this.shadowRoot.querySelectorAll('.row-checkbox');
         
-        checkboxes.forEach((cb, index) => {
+        checkboxes.forEach((cb) => {
             if (cb.checked !== isChecked) {
                 cb.checked = isChecked;
-                const item = this._filteredData[index];
+                const tr = cb.closest('tr');
+                const idx = tr?.dataset?.index;
+                const item = idx !== undefined ? this._filteredData[Number(idx)] : undefined;
+                if (item === undefined) return;
                 if (isChecked) {
                     this._selectedRows.add(item);
                 } else {
@@ -419,12 +436,14 @@ class WcTable extends _HTMLElement {
             th.addEventListener('click', () => this._sort(th.dataset.key));
         });
 
-        // Row selection — use paged data so index maps correctly
-        const pagedData = this._getPagedData();
+        // Row selection — map checkbox to global row index (skips layout-only rows in DOM)
         const checkboxes = this.shadowRoot.querySelectorAll('.row-checkbox');
-        checkboxes.forEach((cb, index) => {
+        checkboxes.forEach((cb) => {
             cb.addEventListener('change', (e) => {
-                this._handleSelection(e, pagedData[index]);
+                const tr = cb.closest('tr');
+                const idx = tr?.dataset?.index;
+                const item = idx !== undefined ? this._filteredData[Number(idx)] : undefined;
+                if (item !== undefined) this._handleSelection(e, item);
             });
         });
 
@@ -453,8 +472,9 @@ class WcTable extends _HTMLElement {
 
         const current = this._currentPage;
         const total = this._totalPages;
-        const start = (current - 1) * this._pageSize + 1;
-        const end = Math.min(current * this._pageSize, this._filteredData.length);
+        const n = this._displayRowCount;
+        const start = n === 0 ? 0 : (current - 1) * this._pageSize + 1;
+        const end = Math.min(current * this._pageSize, n);
 
         // Show up to 5 page buttons around current page
         const range = [];
@@ -469,7 +489,7 @@ class WcTable extends _HTMLElement {
 
         return `
             <div class="wc-pagination" id="wc-pagination">
-                <span class="pg-info">${start}–${end} / ${this._filteredData.length}</span>
+                <span class="pg-info">${start}–${end} / ${n}</span>
                 <div class="pg-controls">
                     <button class="pg-btn" data-page="prev" ${current === 1 ? 'disabled' : ''}>&#8249;</button>
                     ${range[0] > 1 ? '<button class="pg-btn" data-page="1">1</button><span class="pg-ellipsis">…</span>' : ''}
@@ -479,6 +499,26 @@ class WcTable extends _HTMLElement {
                 </div>
             </div>
         `;
+    }
+
+    _handleColumnFilterInput(e) {
+        const input = e.target?.closest?.('.wc-col-filter-input');
+        if (!input || !this.shadowRoot.contains(input)) return;
+
+        const column = input.dataset.colFilter || input.getAttribute('data-col-filter');
+        if (!column) return;
+
+        const value = input.value ?? '';
+        this.dispatchEvent(new CustomEvent('column-filter', {
+            detail: {
+                column,
+                value,
+                query: value,
+                originalEvent: e
+            },
+            bubbles: true,
+            composed: true
+        }));
     }
 
     _handleActionClick(e) {
@@ -501,6 +541,14 @@ class WcTable extends _HTMLElement {
                 }
             }
         }
+    }
+
+    /**
+     * Sentinel row: keep table shell (thead + column filters) when the host passes zero visible rows
+     * but still needs column keys (e.g. external filters). Not rendered as a data row.
+     */
+    _isLayoutOnlyRow(item) {
+        return item != null && item.__wcEmptyFilter === true;
     }
 
     _renderValue(item, key) {
@@ -558,7 +606,7 @@ class WcTable extends _HTMLElement {
             tr.appendChild(th);
         }
 
-        const itemForHeadPlugins = this._filteredData[0] ?? {};
+        const itemForHeadPlugins = this._filteredData.find(item => !this._isLayoutOnlyRow(item)) ?? {};
 
         keys.forEach(key => {
             const th = document.createElement('th');
@@ -589,16 +637,12 @@ class WcTable extends _HTMLElement {
     }
 
     _renderTable() {
-        if (this._filteredData.length === 0 && this._data.length > 0) {
-            return `<div class="no-results">${Config.t('noResults')}</div>`;
-        }
-
         if (this._data.length === 0) {
             return `<div class="no-results">${Config.t('waitingData')}</div>`;
         }
 
         const hiddenCols = this._hiddenCols;
-        const keys = Object.keys(this._data[0]).filter(k => !hiddenCols.has(k));
+        const keys = Object.keys(this._data[0]).filter(k => !hiddenCols.has(k) && k !== '__wcEmptyFilter');
         const hasLeftActions = this.querySelector('[slot="left-actions"]');
         const hasRightActions = this.querySelector('[slot="right-actions"]');
 
@@ -662,10 +706,14 @@ class WcTable extends _HTMLElement {
         const pagedData = this._getPagedData();
         const pageOffset = this._pageSize ? (this._currentPage - 1) * this._pageSize : 0;
         const tbody = document.createElement('tbody');
-        pagedData.forEach((item, index) => {
+        let bodyRowCount = 0;
+        pagedData.forEach((item, sliceIndex) => {
+            if (this._isLayoutOnlyRow(item)) return;
+
+            bodyRowCount += 1;
             const tr = document.createElement('tr');
             // Store the GLOBAL index so _handleActionClick resolves the right item
-            tr.dataset.index = pageOffset + index;
+            tr.dataset.index = pageOffset + sliceIndex;
 
             // Checkbox
             const tdCheck = document.createElement('td');
@@ -698,6 +746,19 @@ class WcTable extends _HTMLElement {
 
             tbody.appendChild(tr);
         });
+
+        if (bodyRowCount === 0) {
+            const tr = document.createElement('tr');
+            tr.className = 'wc-no-data-row';
+            const td = document.createElement('td');
+            const colspan = 1 + (hasLeftActions ? 1 : 0) + keys.length + (hasRightActions ? 1 : 0);
+            td.colSpan = colspan;
+            td.className = 'no-results';
+            td.textContent = Config.t('noResults');
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+        }
+
         table.appendChild(tbody);
 
         const footHost = this.querySelector(':scope > wc-table-footer');

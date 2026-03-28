@@ -109,6 +109,32 @@ describe('wc-table attribute features', () => {
     expect(cells[1].textContent.trim()).toBe('one / two');
   });
 
+  it('should emit column-filter when declarative col-filter input fires input', () => {
+    document.body.innerHTML = `
+      <wc-table id="col-filter-table">
+        <wc-table-row col="name" col-label="Name"></wc-table-row>
+        <wc-table-head>
+          <wc-table-row col="name" type="col-filter" placeholder="Filter name"></wc-table-row>
+        </wc-table-head>
+      </wc-table>`;
+    const t = document.getElementById('col-filter-table');
+    t.data = [{ name: 'Ada' }];
+    const input = t.shadowRoot.querySelector('.wc-col-filter-input[data-col-filter="name"]');
+    expect(input).toBeTruthy();
+    expect(input.getAttribute('placeholder')).toBe('Filter name');
+
+    let detail;
+    t.addEventListener('column-filter', (e) => { detail = e.detail; });
+    input.value = 'ada';
+    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+
+    expect(detail).toBeDefined();
+    expect(detail.column).toBe('name');
+    expect(detail.value).toBe('ada');
+    expect(detail.query).toBe('ada');
+    expect(detail.originalEvent).toBeInstanceOf(Event);
+  });
+
   it('should build declarative wc-table-head row from wc-table-row children', () => {
     class UpperPlugin {
       static render(value) {

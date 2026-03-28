@@ -214,6 +214,7 @@ export class MyPlugin {
 |---|---|---|
 | `BadgePlugin` | `badge` | Auto-colors by value: active→green, pending→yellow, inactive→red |
 | `ButtonPlugin` | `button` | Emits `action-click` with `data-action` attribute |
+| `ColumnFilterPlugin` | `col-filter` | Thead filter input; table emits `column-filter` on `input` |
 | `CurrencyPlugin` | `currency` | Uses `Intl.NumberFormat`. `format` = ISO code (USD, BRL) |
 | `DatePlugin` | `date` | `format` = locale string OR custom tokens (DD, MM, YYYY, etc.) |
 | `ExpressionPlugin` | `expression` | `expr` = template like `${name} – ${id}` |
@@ -289,6 +290,9 @@ All events bubble and are composed (cross-shadow-DOM).
 | `action-click` | `{ action, item, originalEvent }` | `data-action` button clicked |
 | `row-selected` | `{ item, isSelected, selectedRows }` | Single row checkbox toggled |
 | `selection-changed` | `{ selectedRows, allSelected }` | "Select all" toggled |
+| `column-filter` | `{ column, value, query, originalEvent }` | `.wc-col-filter-input` `input` (delegated on shadow root) |
+
+**Empty external filter + thead filters:** pass `tableDataWithEmptyFilterShell(filtered, all)` from `wc-tables-kit/helpers/column-filter`, or `useWcTableColumnFilters` from `wc-tables-kit/react-column-filters` in React (sentinel row `__wcEmptyFilter`).
 
 ---
 

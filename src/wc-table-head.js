@@ -11,6 +11,9 @@
  *    Optional `header-text` sets the value passed to the plugin; otherwise the main header label is used
  *    (`col-label` or i18n `Config.t(col)`).
  *    Plugins receive the **first visible data row** (`_filteredData[0]`) as `item` (e.g. `expression` with `${field}`).
+ *    Use `type="col-filter"` on a `<wc-table-row>` to render a filter input; the table emits **`column-filter`**
+ *    on `input` (`detail`: `column`, `value`, `query`, `originalEvent`). Manual `<template>` rows can use
+ *    `<input class="wc-col-filter-input" data-col-filter="key" />` for the same event.
  */
 const _HTMLElement = typeof HTMLElement !== 'undefined' ? HTMLElement : class {};
 

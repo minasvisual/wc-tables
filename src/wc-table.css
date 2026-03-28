@@ -124,6 +124,26 @@ thead tr:not(:first-child) th:hover {
     background: #f1f5f9;
 }
 
+.wc-col-filter-input {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.35rem 0.5rem;
+    font-size: 0.75rem;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    background: #fff;
+    text-transform: none;
+    letter-spacing: normal;
+    font-weight: 500;
+    outline: none;
+}
+
+.wc-col-filter-input:focus {
+    border-color: #3b82f6;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
 th .sort-icon {
     display: inline-block;
     vertical-align: middle;
@@ -151,6 +171,10 @@ tr:last-child td {
 
 tr:hover td {
     background: rgba(241, 245, 249, 0.5);
+}
+
+tr.wc-no-data-row:hover td {
+    background: transparent;
 }
 
 .no-results {

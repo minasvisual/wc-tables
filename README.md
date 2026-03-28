@@ -79,6 +79,7 @@ The library includes several built-in plugins for common data types:
 | `tags` | - | Renders an array or CSV string as chips. |
 | `button` | `label`, `action`, `class`| Renders a button that emits `action-click`. |
 | `expression`| `expr` | Evaluates a template string like `${name} - ${id}`. |
+| `col-filter` | `placeholder`, `input-type`, `aria-label` | Extra thead row: filter input; table emits `column-filter` on `input`. |
 
 ## Global Configuration
 You can change the language or register new plugins globally:
@@ -123,6 +124,11 @@ The component emits several custom events for deep integration:
 | `selection-changed` | `{ selectedRows, allSelected }` | Fired when "Select All" is toggled. |
 | `sort-changed` | `{ key, direction }` | Fired when sorting changes (useful for server-side). |
 | `page-changed` | `{ page, totalPages }` | Fired when the active page changes (client-side pagination). |
+| `column-filter` | `{ column, value, query, originalEvent }` | Fired when a `.wc-col-filter-input` in the shadow table fires `input`. |
+
+### Column filter helpers (React / vanilla)
+
+When you filter `data` down to zero rows, the table still needs a row shape to render thead + filter inputs. Use **`wc-tables-kit/helpers/column-filter`**: `tableDataWithEmptyFilterShell(filteredRows, allRows)` (or `emptyFilterPlaceholderRow(sample)`). In React, **`wc-tables-kit/react-column-filters`** exports `useWcTableColumnFilters(ref, allRows, filterFn, options)` to bundle debounce, shell `tableData`, `onColumnFilter`, and shadow input sync (with `WcTable` setting `data` in `useLayoutEffect`).
 
 ## Server-Side Mode
 To handle large datasets via API, add the `server-side` attribute. This disables local filtering/sorting and relies on events:
