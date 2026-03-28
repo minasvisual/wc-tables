@@ -65,85 +65,90 @@
         </div>
 
         <wc-table id="placeholderTable" server-side>
-            <wc-table-row col="name" type="uppercase"></wc-table-row>
-            <wc-table-row col="website" type="link"></wc-table-row>
+            <wc-table-row col="price" type="currency"></wc-table-row>
+            <wc-table-row col="thumbnail" type="image"></wc-table-row>
 
-            <h2 slot="toolbar-left" style="margin:0">Users (API)</h2>
+            <h2 slot="toolbar-left" style="margin:0">Products (DummyJSON)</h2>
 
             <template slot="right-actions">
                 <button data-action="view" title="See Details (See console)">🔍</button>
             </template>
+
+            <div slot="after" style="padding: 1rem; border-top: 1px solid #e2e8f0; background: #fff;">
+                <wc-paginate id="placeholderPaginate" total="0" page-size="10"></wc-paginate>
+            </div>
+
         </wc-table>
     </div>
 
     <script type="module" src="./wc-nav.js"></script>
     <script type="module" src="../src/wc-table.js"></script>
+    <script type="module" src="../src/wc-paginate.js"></script>
     <script type="module">
         import { Config } from '../src/config.js';
 
-        // Custom Link Plugin
-        Config.registerPlugin('link', class {
-            static render(value) {
-                return `<a href="http://${value}" target="_blank" style="color: #3b82f6; text-decoration: none;">${value}</a>`;
-            }
-        });
-
-        // Custom Upper Plugin
-        Config.registerPlugin('uppercase', class {
-            static render(value) {
-                return String(value).toUpperCase();
-            }
-        });
+        // Register currency plugin (already provided by wc‑tables, but ensure it's available)
+        // No extra registration needed for built‑in plugins.
 
         const table = document.getElementById('placeholderTable');
+        const paginate = document.getElementById('placeholderPaginate');
         const loadingStatus = document.getElementById('loadingStatus');
 
-        // Fetch function
-        async function fetchUsers(query = '') {
-            loadingStatus.textContent = 'Fetching from API...';
-            const url = query
-                ? `https://jsonplaceholder.typicode.com/users?q=${query}`
-                : `https://jsonplaceholder.typicode.com/users`;
+        // Fetch products with server‑side pagination (DummyJSON)
+        async function fetchProducts(page = 1, limit = 10, query = '') {
+            loadingStatus.textContent = 'Fetching products...';
+            const skip = (page - 1) * limit;
 
+            // DummyJSON uses /search for filtering
+            const url = query
+                ? `https://dummyjson.com/products/search?q=${encodeURIComponent(query)}&limit=${limit}&skip=${skip}`
+                : `https://dummyjson.com/products?limit=${limit}&skip=${skip}`;
             try {
                 const response = await fetch(url);
-                const data = await response.json();
-
-                // Format data for the table
-                const formattedData = data.map(user => ({
-                    id: user.id,
-                    name: user.name,
-                    username: user.username,
-                    email: user.email,
-                    phone: user.phone,
-                    website: user.website,
-                    company: user.company.name
+                const data = await response.json(); // {products:[], total:..., skip:..., limit:...}
+                // Populate table with current page data
+                table.data = data.products.map(p => ({
+                    id: p.id,
+                    thumbnail: p.thumbnail,
+                    title: p.title,
+                    price: p.price,
+                    category: p.category
                 }));
-
-                table.data = formattedData;
-                loadingStatus.textContent = `${formattedData.length} users found.`;
+                // Update pagination attributes
+                paginate.setAttribute('total', String(data.total));
+                paginate.setAttribute('page', String(page));
+                loadingStatus.textContent = `${data.products.length} products shown (page ${page})`;
             } catch (err) {
-                loadingStatus.textContent = 'Error fetching data.';
+                loadingStatus.textContent = 'Error fetching products.';
                 console.error(err);
             }
         }
 
-        // Debounce helper
+        // Listen to pagination changes (server‑side)
+        paginate.addEventListener('page-changed', (e) => {
+            const { page } = e.detail;
+            const limit = Number(paginate.getAttribute('page-size')) || 10;
+            fetchProducts(page, limit);
+        });
+
+        // Debounce helper for search/filter (server‑side)
         let filterTimeout;
         table.addEventListener('before-filter', (e) => {
             const query = e.detail.query;
             clearTimeout(filterTimeout);
             filterTimeout = setTimeout(() => {
-                fetchUsers(query);
-            }, 500); // 500ms delay for API calls
+                const limit = Number(paginate.getAttribute('page-size')) || 10;
+                // Reset to first page when searching
+                fetchProducts(1, limit, query);
+            }, 500);
         });
 
         table.addEventListener('action-click', (e) => {
-            console.log(`User: ${e.detail.item.name}\nCompany: ${e.detail.item.company}`);
+            console.log(`Product: ${e.detail.item.title}\nCategory: ${e.detail.item.category}`, e.detail.item);
         });
 
-        // Initial fetch
-        fetchUsers();
+        // Initial load – first page
+        fetchProducts(1, Number(paginate.getAttribute('page-size')) || 10);
     </script>
 </body>
 
