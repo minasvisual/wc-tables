@@ -240,6 +240,9 @@ class WcTable extends _HTMLElement {
         if (name === 'hide-search' && newValue !== oldValue) {
             this.render();
         }
+        if (name === 'stylesheet-url' && newValue !== oldValue) {
+            this.render();
+        }
     }
 
     _setFilterQueryAndApply(query) {
@@ -372,8 +375,30 @@ class WcTable extends _HTMLElement {
         this._setFilterQueryAndApply(e.target.value);
     }
 
+    /**
+     * Stylesheet for shadow DOM. Default: `./wc-table.css` next to this module (`import.meta.url`).
+     * Bundlers (Vite, etc.) often break that URL — set `stylesheet-url="/path/to/wc-table.css"` to load a static asset.
+     */
+    _resolveStylesheetHref() {
+        const override = this.getAttribute('stylesheet-url');
+        if (override != null && override !== '') {
+            const base =
+                typeof document !== 'undefined' && document.baseURI
+                    ? document.baseURI
+                    : typeof location !== 'undefined'
+                      ? location.href
+                      : 'http://localhost/';
+            try {
+                return new URL(override, base).href;
+            } catch {
+                return override;
+            }
+        }
+        return new URL('./wc-table.css', import.meta.url).href;
+    }
+
     render() {
-        const cssPath = new URL('./wc-table.css', import.meta.url).href;
+        const cssPath = this._resolveStylesheetHref();
         const hideSearch = this.hasAttribute('hide-search');
         const searchBlock = hideSearch
             ? ''

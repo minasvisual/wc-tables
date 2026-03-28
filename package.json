@@ -1,6 +1,6 @@
 {
   "name": "wc-tables-kit",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "description": "A flexible, slot-based, and modular vanilla web component table.",
   "type": "module",
   "main": "src/wc-table.js",
@@ -52,10 +52,13 @@
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
+    "@testing-library/react": "^16.3.2",
     "@vitest/browser": "^4.1.2",
     "http-server": "^14.1.1",
     "jsdom": "^29.0.1",
     "playwright": "^1.58.2",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
     "vitest": "^4.1.2"
   }
 }

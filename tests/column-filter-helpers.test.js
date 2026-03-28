@@ -22,8 +22,9 @@ describe('column-filter-helpers', () => {
     expect(row.tags).toEqual([]);
   });
 
-  it('emptyFilterPlaceholderRow returns null for null sample', () => {
+  it('emptyFilterPlaceholderRow returns null for null or undefined sample', () => {
     expect(emptyFilterPlaceholderRow(null)).toBeNull();
+    expect(emptyFilterPlaceholderRow(undefined)).toBeNull();
   });
 
   it('tableDataWithEmptyFilterShell returns filtered when non-empty', () => {

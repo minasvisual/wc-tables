@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import '../src/wc-table.js';
 import { Config } from '../src/config.js';
+import { tableDataWithEmptyFilterShell } from '../src/helpers/column-filter-helpers.js';
 
 describe('wc-table attribute features', () => {
   let el;
@@ -210,6 +211,42 @@ describe('wc-table attribute features', () => {
     const rows = el.shadowRoot.querySelectorAll('tbody tr');
     expect(rows.length).toBe(1);
     expect(rows[0].textContent).toContain('Banana');
+  });
+
+  it('should keep thead col-filter and show wc-no-data-row when data is only __wcEmptyFilter sentinel', () => {
+    document.body.innerHTML = `
+      <wc-table id="sentinel-table">
+        <wc-table-row col="name" col-label="Name"></wc-table-row>
+        <wc-table-row col="id"></wc-table-row>
+        <wc-table-head>
+          <wc-table-row col="name" type="col-filter" placeholder="Filter"></wc-table-row>
+        </wc-table-head>
+      </wc-table>`;
+    const t = document.getElementById('sentinel-table');
+    const all = [{ name: 'Ada', id: 1 }];
+    t.data = tableDataWithEmptyFilterShell([], all);
+
+    const filterInput = t.shadowRoot.querySelector('.wc-col-filter-input[data-col-filter="name"]');
+    expect(filterInput).toBeTruthy();
+
+    const noDataRow = t.shadowRoot.querySelector('tbody tr.wc-no-data-row');
+    expect(noDataRow).toBeTruthy();
+    expect(noDataRow.querySelector('.no-results')).toBeTruthy();
+
+    expect(t.shadowRoot.querySelectorAll('tbody .row-checkbox').length).toBe(0);
+    expect(t.shadowRoot.querySelector('th[data-key="__wcEmptyFilter"]')).toBeNull();
+  });
+
+  it('should not render a data tbody row for __wcEmptyFilter sentinel mixed with real rows', () => {
+    document.body.innerHTML = `
+      <wc-table id="mix-sentinel">
+        <wc-table-row col="x"></wc-table-row>
+      </wc-table>`;
+    const t = document.getElementById('mix-sentinel');
+    t.data = [{ x: 1, __wcEmptyFilter: true }];
+    const withCheckbox = t.shadowRoot.querySelectorAll('tbody tr[data-index]');
+    expect(withCheckbox.length).toBe(0);
+    expect(t.shadowRoot.querySelector('tbody tr.wc-no-data-row')).toBeTruthy();
   });
 
 });
