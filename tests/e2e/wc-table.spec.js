@@ -30,22 +30,22 @@ test.describe('wc-table core features', () => {
     });
 
     test('should filter data locally', async ({ page }) => {
-        await page.evaluate(() => {
-            const table = document.getElementById('testTable');
-            table.data = [
-                { id: 1, name: 'Apple', status: 'A' },
-                { id: 2, name: 'Banana', status: 'B' },
-                { id: 3, name: 'Cherry', status: 'C' }
-            ];
-        });
+    await page.evaluate(() => {
+        const table = document.getElementById('testTable');
+        table.data = [
+            { id: 1, name: 'Apple', status: 'A' },
+            { id: 2, name: 'Banana', status: 'B' },
+            { id: 3, name: 'Cherry', status: 'C' }
+        ];
+    });
 
-        // Search input is in shadow DOM
-        const searchInput = page.locator('wc-table >> .search-input');
-        await searchInput.fill('Banana');
+    // Column filter input is in shadow DOM (`column-filters` enabled in fixture).
+    const statusFilter = page.locator('wc-table >> .wc-col-filter-input[data-col-filter="status"]');
+    await statusFilter.fill('B');
 
-        const rows = page.locator('wc-table >> tbody tr');
-        await expect(rows).toHaveCount(1);
-        await expect(rows).toContainText('Banana');
+    const rows = page.locator('wc-table >> tbody tr');
+    await expect(rows).toHaveCount(1);
+    await expect(rows).toContainText('Banana');
     });
 
     test('should emit events correctly', async ({ page }) => {

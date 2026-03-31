@@ -6,8 +6,11 @@
 </head>
 <body>
     <div id="container">
-        <wc-table id="testTable">
+        <wc-table id="testTable" column-filters>
             <wc-table-row col="status" type="badge"></wc-table-row>
+            <wc-table-head>
+                <wc-table-row col="status" type="col-filter" placeholder="Filter status"></wc-table-row>
+            </wc-table-head>
             <div slot="left-actions"><button id="btnLeft">Left</button></div>
             <div slot="right-actions"><button id="btnRight">Right</button></div>
             <div slot="toolbar-left" id="toolbarItem">Toolbar Item</div>

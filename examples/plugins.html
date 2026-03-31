@@ -45,7 +45,7 @@
         </header>
 
         <div class="card">
-            <wc-table id="pluginTable" hide-search>
+            <wc-table id="pluginTable" hide-search column-filters>
                 <!-- Plugin Configuration -->
                 <wc-table-row col="avatar" type="image" rounded="true"></wc-table-row>
                 <wc-table-row col="website" type="link" label="Visit"></wc-table-row>
@@ -68,11 +68,10 @@
     </div>
 
     <script type="module" src="./wc-nav.js"></script>
-    <!-- Use ../src for local dev (hide-search, etc.). For CDN after publish: unpkg.com/wc-tables-kit@^1.0.6 -->
+    <!-- Use ../src for local dev (hide-search, column-filters, etc.). For CDN after publish: unpkg.com/wc-tables-kit -->
     <script type="module" src="../src/wc-table.js"></script>
     <script type="module">
         import { Bus } from '../src/bus.js';
-        import { tableDataWithEmptyFilterShell } from '../src/helpers/column-filter-helpers.js';
 
         const table = document.getElementById('pluginTable');
 
@@ -112,115 +111,14 @@
             }
         ];
 
-        const colFilterState = { name: '', username: '', tags: '' };
-
-        function tagsSearchBlob(tags) {
-            if (tags == null) return '';
-            if (Array.isArray(tags)) return tags.join(' ').toLowerCase();
-            const raw = String(tags).toLowerCase();
-            try {
-                const p = JSON.parse(tags);
-                if (Array.isArray(p)) return p.map(String).join(' ').toLowerCase();
-            } catch { /* ignore */ }
-            return raw.replace(/,/g, ' ');
-        }
-
-        /** Filtro que estava focado — a tabela re-renderiza a cada tecla e o <input> é recriado; sem isto o foco some. */
-        let filterFocusKey = null;
-        let filterSelStart = 0;
-        let filterSelEnd = 0;
-
-        function captureFilterCaret(inp) {
-            filterFocusKey = inp.dataset.colFilter;
-            filterSelStart = inp.selectionStart ?? inp.value.length;
-            filterSelEnd = inp.selectionEnd ?? inp.value.length;
-        }
-
-        function restoreFilterFocus() {
-            if (!filterFocusKey) return;
-            const root = table.shadowRoot;
-            if (!root) return;
-            const el = root.querySelector(`[data-col-filter="${filterFocusKey}"]`);
-            if (!el) return;
-            el.focus();
-            if (el.setSelectionRange) {
-                try {
-                    const len = el.value.length;
-                    const a = Math.min(filterSelStart, len);
-                    const b = Math.min(filterSelEnd, len);
-                    el.setSelectionRange(a, b);
-                } catch (_) { /* ignore */ }
-            }
-        }
-
-        function applyColumnFilters() {
-            const nq = colFilterState.name.trim().toLowerCase();
-            const uq = colFilterState.username.trim().toLowerCase();
-            const tq = colFilterState.tags.trim().toLowerCase();
-
-            const filtered = baseData.filter((row) => {
-                if (nq && !String(row.name ?? '').toLowerCase().includes(nq)) return false;
-                if (uq && !String(row.username ?? '').toLowerCase().includes(uq)) return false;
-                if (tq && !tagsSearchBlob(row.tags).includes(tq)) return false;
-                return true;
-            });
-
-            table.data = tableDataWithEmptyFilterShell(filtered, baseData);
-            queueMicrotask(() => {
-                syncColFilterInputs();
-                restoreFilterFocus();
-            });
-        }
-
-        function syncColFilterInputs() {
-            const root = table.shadowRoot;
-            if (!root) return;
-            root.querySelectorAll('.wc-col-filter-input[data-col-filter]').forEach((el) => {
-                const key = el.dataset.colFilter;
-                if (key && colFilterState[key] !== undefined) el.value = colFilterState[key];
-            });
-        }
-
-        function onColumnFilter(e) {
-            const { column, value, originalEvent } = e.detail;
-            const inp = originalEvent?.target;
-            if (inp?.matches?.('.wc-col-filter-input')) captureFilterCaret(inp);
-            if (column && colFilterState[column] !== undefined) {
-                colFilterState[column] = value;
-            }
-            applyColumnFilters();
-        }
-
-        function onFilterFocusOut(e) {
-            if (!e.target.matches?.('.wc-col-filter-input')) return;
-            requestAnimationFrame(() => {
-                const active = table.shadowRoot?.activeElement;
-                if (!active?.matches?.('.wc-col-filter-input')) filterFocusKey = null;
-            });
-        }
-
-        let colFiltersBound = false;
-        function attachColumnFilterUI() {
-            const root = table.shadowRoot;
-            if (!root) return;
-            if (!colFiltersBound) {
-                colFiltersBound = true;
-                table.addEventListener('column-filter', onColumnFilter);
-                root.addEventListener('focusout', onFilterFocusOut, true);
-            }
-            syncColFilterInputs();
-        }
-
+        // Native column filters: `column-filters` + `type=\"col-filter\"` rows handle client-side filtering.
         table.data = [...baseData];
-        queueMicrotask(attachColumnFilterUI);
 
         const offBus = Bus(table, {
             'action-click': (e) => {
                 const { action, item } = e.detail;
                 alert(`Action: ${action} on item ${item.name}`);
             },
-            'sort-changed': () => queueMicrotask(syncColFilterInputs),
-            'updated': () => queueMicrotask(syncColFilterInputs),
         });
         window.addEventListener('pagehide', offBus, { once: true });
     </script>

@@ -136,6 +136,34 @@ describe('wc-table attribute features', () => {
     expect(detail.originalEvent).toBeInstanceOf(Event);
   });
 
+  it('should apply client-side column filters when column-filters attribute is present', () => {
+    document.body.innerHTML = `
+      <wc-table id="col-filter-native" column-filters>
+        <wc-table-row col="name" col-label="Name"></wc-table-row>
+        <wc-table-head>
+          <wc-table-row col="name" type="col-filter" placeholder="Filter name"></wc-table-row>
+        </wc-table-head>
+      </wc-table>`;
+    const t = document.getElementById('col-filter-native');
+    t.data = [
+      { name: 'Ada' },
+      { name: 'Bob' },
+      { name: 'Adam' },
+    ];
+    const input = t.shadowRoot.querySelector('.wc-col-filter-input[data-col-filter="name"]');
+    expect(input).toBeTruthy();
+
+    input.value = 'ada';
+    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+
+    const rows = Array.from(t.shadowRoot.querySelectorAll('tbody tr'));
+    const texts = rows.map((r) => r.textContent || '');
+    // Both Ada and Adam match 'ada' substring case-insensitively.
+    expect(rows.length).toBe(2);
+    expect(texts.some((t) => t.includes('Ada'))).toBe(true);
+    expect(texts.some((t) => t.includes('Adam'))).toBe(true);
+  });
+
   it('should build declarative wc-table-head row from wc-table-row children', () => {
     class UpperPlugin {
       static render(value) {

@@ -30,6 +30,8 @@ class WcTable extends _HTMLElement {
         this._columnConfigs = {};
         this._isFirstLoad = true;
         this._currentPage = 1;
+        this._columnFilters = {};
+        this._columnFilterFocus = { key: null, start: 0, end: 0 };
         
         this._plugins = {
             'date': DatePlugin,
@@ -164,7 +166,7 @@ class WcTable extends _HTMLElement {
     }
 
     static get observedAttributes() {
-        return ['server-side', 'data', 'page-size', 'hidden-cols', 'hide-search'];
+        return ['server-side', 'data', 'page-size', 'hidden-cols', 'hide-search', 'stylesheet-url', 'column-filters'];
     }
 
     /** Returns a Set of column keys that should be hidden. */
@@ -243,6 +245,11 @@ class WcTable extends _HTMLElement {
         if (name === 'stylesheet-url' && newValue !== oldValue) {
             this.render();
         }
+        if (name === 'column-filters' && newValue !== oldValue) {
+            // Toggling column-filters on/off resets internal map and reapplies filters.
+            this._columnFilters = {};
+            this._applyFilters();
+        }
     }
 
     _setFilterQueryAndApply(query) {
@@ -267,15 +274,56 @@ class WcTable extends _HTMLElement {
         }
 
         const query = this._filterText.toLowerCase();
+        const useColumnFilters = this.hasAttribute('column-filters');
+        const activeColumnFilters = useColumnFilters ? this._columnFilters : {};
+
         this._filteredData = this._data.filter(item => {
+            // Layout-only rows (e.g. empty-filter sentinel) are kept regardless of filters.
             if (this._isLayoutOnlyRow(item)) return true;
-            return Object.values(item).some(val =>
-                String(val).toLowerCase().includes(query)
-            );
+
+            // Global text query (search box / filterQuery).
+            if (query) {
+                const matchesText = Object.values(item).some(val =>
+                    String(val).toLowerCase().includes(query)
+                );
+                if (!matchesText) return false;
+            }
+
+            if (!useColumnFilters) {
+                return true;
+            }
+
+            // Column-level filters: each non-empty value must match the corresponding field.
+            for (const [col, rawFilter] of Object.entries(activeColumnFilters)) {
+                const f = String(rawFilter ?? '').trim().toLowerCase();
+                if (!f) continue;
+                const v = item[col];
+                if (v == null) return false;
+                let haystack;
+                if (typeof v === 'object') {
+                    // Flatten simple object values (e.g. company.name) for basic matching.
+                    try {
+                        haystack = Object.values(v).join(' ').toLowerCase();
+                    } catch {
+                        haystack = String(v).toLowerCase();
+                    }
+                } else {
+                    haystack = String(v).toLowerCase();
+                }
+                if (!haystack.includes(f)) {
+                    return false;
+                }
+            }
+
+            return true;
         });
         
         this._applySort();
-        
+
+        if (useColumnFilters && !this.hasAttribute('server-side')) {
+            this._syncColumnFilterInputsAndFocus();
+        }
+
         this.dispatchEvent(new CustomEvent('after-filter', { 
             detail: { results: this._filteredData },
             bubbles: true, 
@@ -544,6 +592,53 @@ class WcTable extends _HTMLElement {
             bubbles: true,
             composed: true
         }));
+
+        // Optional native column filtering when `column-filters` attribute is present and not server-side.
+        if (!this.hasAttribute('column-filters')) return;
+        if (this.hasAttribute('server-side')) return;
+
+        // Capture caret/focus state before filters re-render the table.
+        this._columnFilterFocus = {
+            key: column,
+            start: input.selectionStart ?? value.length,
+            end: input.selectionEnd ?? value.length,
+        };
+
+        this._columnFilters = {
+            ...this._columnFilters,
+            [column]: value,
+        };
+        this._applyFilters();
+    }
+
+    _syncColumnFilterInputsAndFocus() {
+        const root = this.shadowRoot;
+        if (!root) return;
+
+        // Sync input values from internal _columnFilters map.
+        root.querySelectorAll('.wc-col-filter-input[data-col-filter]').forEach((el) => {
+            const key = el.dataset.colFilter;
+            if (!key) return;
+            const v = this._columnFilters[key] ?? '';
+            if (el.value !== v) el.value = v;
+        });
+
+        const focus = this._columnFilterFocus;
+        if (!focus || !focus.key) return;
+
+        const inp = root.querySelector(`.wc-col-filter-input[data-col-filter="${focus.key}"]`);
+        if (!inp || document.activeElement === inp) return;
+        inp.focus();
+        if (typeof inp.setSelectionRange === 'function') {
+            try {
+                const len = inp.value.length;
+                const a = Math.min(focus.start, len);
+                const b = Math.min(focus.end, len);
+                inp.setSelectionRange(a, b);
+            } catch {
+                // ignore selection errors
+            }
+        }
     }
 
     _handleActionClick(e) {
