@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Filter Delay Fixture</title>
+</head>
+<body>
+    <wc-table id="searchTable" filter-delay="800">
+        <wc-table-row col="id"></wc-table-row>
+        <wc-table-row col="name"></wc-table-row>
+    </wc-table>
+
+    <wc-table id="columnFilterTable" column-filters filter-delay="800">
+        <wc-table-row col="name" col-label="Name"></wc-table-row>
+        <wc-table-row col="role"></wc-table-row>
+        <wc-table-head>
+            <wc-table-row col="name" type="col-filter" placeholder="Filter name"></wc-table-row>
+        </wc-table-head>
+    </wc-table>
+
+    <script type="module">
+        import '../../../src/wc-table.js';
+
+        const rows = [
+            { id: 1, name: 'Ada Lovelace', role: 'Analyst' },
+            { id: 2, name: 'Grace Hopper', role: 'Admiral' },
+            { id: 3, name: 'Linus Torvalds', role: 'Engineer' }
+        ];
+
+        document.getElementById('searchTable').data = rows;
+        document.getElementById('columnFilterTable').data = rows;
+    </script>
+</body>
+</html>

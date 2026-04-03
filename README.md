@@ -29,6 +29,7 @@ A flexible, slot-based, and modular **vanilla Web Component table**. No runtime 
 - **Bulk selection**: checkbox column with `row-selected` / `selection-changed` events.
 - **Search & filter pipeline**:
   - Built‑in search box (`before-filter` / `after-filter` events).
+  - Optional `filter-delay="300"` debounce for built-in search and native column filters.
   - `hide-search` + `filterQuery` property for custom UIs.
 - **Client-side pagination** (`page-size`) and standalone `<wc-paginate>` component.
 - **Server-side mode** (`server-side`): disables local sort/filter, emits events so your API can drive data.
@@ -370,6 +371,7 @@ table.addEventListener('page-changed', (e) => {
 | `hidden-cols` | string / JSON | — | CSV (`"id,phone"`) or JSON array (`'["id","phone"]'`) of column keys to hide (data remains). |
 | `server-side` | boolean | off | When present, disables local filtering/sorting and uses events (`before-filter`, `sort-changed`, etc.) to let your API drive the rows. |
 | `hide-search` | boolean | off | Hides the built-in search box; you can still use `filterQuery` and `before-filter`/`after-filter`. |
+| `filter-delay` | number | `0` | Debounce in milliseconds for the built-in search input and native `.wc-col-filter-input` filters. Invalid or negative values fall back to `0`. |
 | `column-filters` | boolean | off | When present, `<wc-table>` **applies native client-side column filters** from `.wc-col-filter-input` fields. Still emits `column-filter`. |
 | `stylesheet-url` | string | module‑relative | Overrides `import.meta.url`-based CSS path. Useful for bundlers (Vite/Angular) — e.g. `"/wc-tables/wc-table.css"`. |
 
@@ -580,4 +582,3 @@ Badges at the top of this README point to **npm** and **recent GitHub activity**
 ## 14. License
 
 MIT
-

@@ -1,6 +1,6 @@
 {
   "name": "wc-tables-kit",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "A flexible, slot-based, and modular vanilla web component table.",
   "type": "module",
   "main": "src/wc-table.js",

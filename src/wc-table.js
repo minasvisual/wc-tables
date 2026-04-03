@@ -32,6 +32,7 @@ class WcTable extends _HTMLElement {
         this._currentPage = 1;
         this._columnFilters = {};
         this._columnFilterFocus = { key: null, start: 0, end: 0 };
+        this._filterTimer = null;
         
         this._plugins = {
             'date': DatePlugin,
@@ -120,6 +121,7 @@ class WcTable extends _HTMLElement {
 
     disconnectedCallback() {
         if (this._observer) this._observer.disconnect();
+        this._clearPendingFilter();
     }
 
     /** @param {MutationRecord[]} mutations */
@@ -166,7 +168,14 @@ class WcTable extends _HTMLElement {
     }
 
     static get observedAttributes() {
-        return ['server-side', 'data', 'page-size', 'hidden-cols', 'hide-search', 'stylesheet-url', 'column-filters'];
+        return ['server-side', 'data', 'page-size', 'hidden-cols', 'hide-search', 'stylesheet-url', 'column-filters', 'filter-delay'];
+    }
+
+    get _filterDelay() {
+        const raw = this.getAttribute('filter-delay');
+        if (raw == null || raw === '') return 0;
+        const parsed = Number(raw);
+        return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
     }
 
     /** Returns a Set of column keys that should be hidden. */
@@ -252,7 +261,30 @@ class WcTable extends _HTMLElement {
         }
     }
 
+    _clearPendingFilter() {
+        if (this._filterTimer != null) {
+            clearTimeout(this._filterTimer);
+            this._filterTimer = null;
+        }
+    }
+
+    _scheduleFilterApply(applyNow) {
+        this._clearPendingFilter();
+        const delay = this._filterDelay;
+
+        if (delay <= 0) {
+            applyNow();
+            return;
+        }
+
+        this._filterTimer = setTimeout(() => {
+            this._filterTimer = null;
+            applyNow();
+        }, delay);
+    }
+
     _setFilterQueryAndApply(query) {
+        this._clearPendingFilter();
         this._filterText = query;
         this.dispatchEvent(new CustomEvent('before-filter', {
             detail: { query: this._filterText },
@@ -420,7 +452,11 @@ class WcTable extends _HTMLElement {
     }
 
     _handleSearch(e) {
-        this._setFilterQueryAndApply(e.target.value);
+        const value = e.target.value;
+        this._filterText = value;
+        this._scheduleFilterApply(() => {
+            this._setFilterQueryAndApply(value);
+        });
     }
 
     /**
@@ -608,7 +644,9 @@ class WcTable extends _HTMLElement {
             ...this._columnFilters,
             [column]: value,
         };
-        this._applyFilters();
+        this._scheduleFilterApply(() => {
+            this._applyFilters();
+        });
     }
 
     _syncColumnFilterInputsAndFocus() {

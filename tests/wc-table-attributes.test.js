@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import '../src/wc-table.js';
 import { Config } from '../src/config.js';
 import { tableDataWithEmptyFilterShell } from '../src/helpers/column-filter-helpers.js';
@@ -9,6 +9,10 @@ describe('wc-table attribute features', () => {
   beforeEach(() => {
     document.body.innerHTML = '<wc-table id="test-table"></wc-table>';
     el = document.getElementById('test-table');
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it('should parse and set data from data attribute', () => {
@@ -239,6 +243,69 @@ describe('wc-table attribute features', () => {
     const rows = el.shadowRoot.querySelectorAll('tbody tr');
     expect(rows.length).toBe(1);
     expect(rows[0].textContent).toContain('Banana');
+  });
+
+  it('should debounce built-in search using filter-delay', () => {
+    vi.useFakeTimers();
+    el.setAttribute('filter-delay', '200');
+    el.data = [
+      { id: 1, name: 'Apple' },
+      { id: 2, name: 'Banana' }
+    ];
+    el.render();
+
+    let before = 0;
+    let after = 0;
+    el.addEventListener('before-filter', () => { before += 1; });
+    el.addEventListener('after-filter', () => { after += 1; });
+
+    const input = el.shadowRoot.getElementById('searchInput');
+    input.value = 'Ban';
+    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+
+    expect(before).toBe(0);
+    expect(after).toBe(0);
+    expect(el.filterQuery).toBe('Ban');
+
+    vi.advanceTimersByTime(199);
+    expect(before).toBe(0);
+    expect(after).toBe(0);
+
+    vi.advanceTimersByTime(1);
+    expect(before).toBe(1);
+    expect(after).toBe(1);
+
+    const rows = el.shadowRoot.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(1);
+    expect(rows[0].textContent).toContain('Banana');
+  });
+
+  it('should debounce native column filters using filter-delay', () => {
+    vi.useFakeTimers();
+    document.body.innerHTML = `
+      <wc-table id="col-filter-delay" column-filters filter-delay="150">
+        <wc-table-row col="name" col-label="Name"></wc-table-row>
+        <wc-table-head>
+          <wc-table-row col="name" type="col-filter" placeholder="Filter name"></wc-table-row>
+        </wc-table-head>
+      </wc-table>`;
+
+    const t = document.getElementById('col-filter-delay');
+    t.data = [{ name: 'Ada' }, { name: 'Grace' }];
+
+    const input = t.shadowRoot.querySelector('.wc-col-filter-input[data-col-filter="name"]');
+    input.value = 'Ada';
+    input.dispatchEvent(new Event('input', { bubbles: true, composed: true }));
+
+    expect(t.shadowRoot.querySelectorAll('tbody tr').length).toBe(2);
+
+    vi.advanceTimersByTime(149);
+    expect(t.shadowRoot.querySelectorAll('tbody tr').length).toBe(2);
+
+    vi.advanceTimersByTime(1);
+    const rows = t.shadowRoot.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(1);
+    expect(rows[0].textContent).toContain('Ada');
   });
 
   it('should keep thead col-filter and show wc-no-data-row when data is only __wcEmptyFilter sentinel', () => {
