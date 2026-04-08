@@ -1,0 +1,67 @@
+{
+  "$schema": "https://raw.githubusercontent.com/webcomponents/custom-elements-manifest/master/schema.json",
+  "schemaVersion": "1.0.0",
+  "readme": "README.md",
+  "modules": [
+    {
+      "kind": "javascript-module",
+      "path": "src/wc-table.js",
+      "declarations": [
+        {
+          "kind": "class",
+          "name": "WcTable",
+          "tagName": "wc-table",
+          "description": "Main data table component with sorting, filtering, plugins, slots and events."
+        }
+      ]
+    },
+    {
+      "kind": "javascript-module",
+      "path": "src/wc-paginate.js",
+      "declarations": [
+        {
+          "kind": "class",
+          "name": "WcPaginate",
+          "tagName": "wc-paginate",
+          "description": "Standalone pagination component."
+        }
+      ]
+    },
+    {
+      "kind": "javascript-module",
+      "path": "src/wc-table-head.js",
+      "declarations": [
+        {
+          "kind": "class",
+          "name": "WcTableHead",
+          "tagName": "wc-table-head",
+          "description": "Declarative host for extra header rows."
+        }
+      ]
+    },
+    {
+      "kind": "javascript-module",
+      "path": "src/wc-table-footer.js",
+      "declarations": [
+        {
+          "kind": "class",
+          "name": "WcTableFooter",
+          "tagName": "wc-table-footer",
+          "description": "Declarative host for extra footer rows."
+        }
+      ]
+    },
+    {
+      "kind": "javascript-module",
+      "path": "src/wc-table-row.js",
+      "declarations": [
+        {
+          "kind": "class",
+          "name": "WcTableRow",
+          "tagName": "wc-table-row",
+          "description": "Column configuration element used by wc-table."
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 {
   "name": "wc-tables-kit",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "description": "A flexible, slot-based, and modular vanilla web component table.",
   "type": "module",
   "main": "src/wc-table.js",
@@ -28,7 +28,11 @@
     "./wc-table-footer": "./src/wc-table-footer.js"
   },
   "files": [
-    "src/"
+    "src/",
+    "README.md",
+    "webcomponents.json",
+    "custom-elements.json",
+    "LICENSE"
   ],
   "keywords": [
     "web-components",
@@ -45,6 +49,11 @@
     "type": "git",
     "url": "https://github.com/minasvisual/wc-tables"
   },
+  "homepage": "https://github.com/minasvisual/wc-tables#readme",
+  "bugs": {
+    "url": "https://github.com/minasvisual/wc-tables/issues"
+  },
+  "customElements": "custom-elements.json",
   "scripts": {
     "test": "vitest --exclude tests/e2e/**",
     "dev": "http-server -c-1",
