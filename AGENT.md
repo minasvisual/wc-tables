@@ -82,9 +82,15 @@ Alternatively, pass a JSON array as an HTML attribute (useful for static/SSR con
 ```
 The JS property takes priority over the attribute when both are present.
 
-**Observed attributes:** `server-side`, `data`, `page-size`, `hidden-cols`, `hide-search`
+**Observed attributes:** `server-side`, `data`, `page-size`, `hidden-cols`, `hide-search`, `filter-delay`, `column-filters`, `stylesheet-url`
 
-**Public filter API:** `filterQuery` get/set — same pipeline as the default search (`before-filter` → apply → `after-filter`). Use with `hide-search` for a custom filter UI.
+**Attribute details:**
+- `hide-search`: Removes default toolbar search UI. Use `table.filterQuery` (get/set) for the same pipeline, or build a custom UI.
+- `filter-delay`: Debounce in milliseconds for the built-in search and column filters (defaults to 0).
+- `column-filters`: If present, applies native client-side column filters from `.wc-col-filter-input` fields.
+- `stylesheet-url`: Overrides built-in CSS with a custom stylesheet. See Styling section.
+
+**Public filter API:** `filterQuery` get/set — same pipeline as the default search (`before-filter` → apply → `after-filter`).
 
 **Computed getters (pagination):**
 - `_pageSize` → parses `page-size` attribute as integer; returns `0` if absent (pagination off)
@@ -101,7 +107,7 @@ The JS property takes priority over the attribute when both are present.
 - `render()` → replaces shadow `innerHTML` (toolbar + `#tableContent`); runs on mount, `hide-search` changes, and `server-side` sort header refresh. Does **not** re-bind row action clicks (handled in constructor).
 - `renderContent()` → replaces only `#tableContent` innerHTML (table + pagination); called after filter/sort/pagination and most data updates
 
-**CSS:** Injected via `<link>` pointing to `./wc-table.css` resolved with `import.meta.url`.
+**CSS:** Bundled directly in its Shadow DOM. The optional `stylesheet-url` attribute allows loading a custom stylesheet to completely override the default styling.
 
 ---
 
@@ -445,6 +451,12 @@ td { color: var(--wc-table-text-color, #475569); }
 ```
 Then callers can override: `wc-table { --wc-table-header-bg: #1e293b; }`.
 
+Alternatively, use the `stylesheet-url` attribute to supply a fully custom CSS file:
+```html
+<wc-table stylesheet-url="/path/to/my-custom-tables.css"></wc-table>
+```
+> **Note:** The `stylesheet-url` attribute should **ONLY** be used if you need to load a custom style sheet to completely override the default appearance, as it replaces the built-in bundled CSS.
+
 ---
 
 ## 11. Examples
@@ -470,7 +482,7 @@ Then callers can override: `wc-table { --wc-table-header-bg: #1e293b; }`.
 - **`wc-table-row` elements must be direct children.** The `MutationObserver` only watches `childList` of the `<wc-table>` itself.
 - **Column keys are auto-detected** from `Object.keys(data[0])` on first render, unless hidden by `wc-table-row` config.
 - **Adding a plugin does not auto-re-render.** You must set `.data` again after calling `Config.registerPlugin()`.
-- **`import.meta.url`** is used to resolve the CSS file path. In bundlers that don't support this (older Next.js configs), the CSS path may break — handle with a `try/catch` or load CSS separately.
+- **CSS imports are now natively bundled.** Frameworks like Nuxt don't need to manually import or transpile the library CSS. You no longer need to worry about bundler pathing issues for the core CSS. Use `stylesheet-url` purely for providing a replacement stylesheet.
 - **The `guard` in `wc-table-row.js`** (`if (!customElements.get('wc-table-row'))`) prevents double-registration errors if the module is imported multiple times.
 - **`hide-search` + `filterQuery`:** Default toolbar search is omitted when the attribute is present; use `table.filterQuery = '…'` (or `before-filter` / `after-filter`) for custom UIs. Same pipeline as the built-in input.
 - **Custom inputs inside cloned thead rows:** Assigning `table.data` triggers `renderContent()` and rebuilds the table; filter `<input>` nodes are recreated — restore focus/caret after render if the UX requires typing (see `examples/plugins.html`).

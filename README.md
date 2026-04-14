@@ -59,7 +59,7 @@ npm install wc-tables-kit
 | Import | Purpose |
 | --- | --- |
 | `wc-tables-kit` | Registers `<wc-table>` and related elements. |
-| `wc-tables-kit/style.css` | Global stylesheet URL (optional; shadow also loads CSS). |
+| `wc-tables-kit/style.css` | Raw CSS export (optional, mostly for custom styling integrations). |
 | `wc-tables-kit/config` | `Config` (language, `registerPlugin`). |
 | `wc-tables-kit/bus` | `Bus()` event helper. |
 | `wc-tables-kit/react` | `WcTable`, `WcTableRow` React wrappers. |
@@ -118,12 +118,7 @@ Pin a version in production; `@latest` is fine for quick tests.
 ></script>
 ```
 
-Optional stylesheet (shadow `<link>` also loads `./wc-table.css` next to the module; override with `stylesheet-url` if your bundler breaks that path):
-
-```html
-<link rel="stylesheet" href="https://unpkg.com/wc-tables-kit@1.0.7/src/wc-table.css" />
-```
-
+> **Note:** The component comes with built-in CSS bundled directly in its Shadow DOM. The optional `stylesheet-url` attribute should **ONLY** be used if you need to load a **custom style** sheet to completely override the default appearance.
 ### Minimal HTML‑only table
 
 ```html
@@ -163,7 +158,6 @@ Use components
 ```vue
 <template>
   <wc-table 
-    stylesheet-url="/wc-table.css" 
     :data="data" 
     @action-click="({ detail }) => console.log(detail)"
   >
@@ -401,7 +395,7 @@ table.addEventListener('page-changed', (e) => {
 | `hide-search` | boolean | off | Hides the built-in search box; you can still use `filterQuery` and `before-filter`/`after-filter`. |
 | `filter-delay` | number | `0` | Debounce in milliseconds for the built-in search input and native `.wc-col-filter-input` filters. Invalid or negative values fall back to `0`. |
 | `column-filters` | boolean | off | When present, `<wc-table>` **applies native client-side column filters** from `.wc-col-filter-input` fields. Still emits `column-filter`. |
-| `stylesheet-url` | string | module‑relative | Overrides `import.meta.url`-based CSS path. Useful for bundlers (Vite/Angular) — e.g. `"/wc-tables/wc-table.css"`. |
+| `stylesheet-url` | string | — | URL to a **custom style** sheet. Use this ONLY if you intend to completely replace the built-in Shadow DOM CSS with your own custom styles. |
 
 Other configuration is expressed through:
 
