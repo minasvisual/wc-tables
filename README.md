@@ -127,13 +127,7 @@ Optional stylesheet (shadow `<link>` also loads `./wc-table.css` next to the mod
 ### Minimal HTML‑only table
 
 ```html
-<wc-table
-  data='[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}]'
-  page-size="5"
->
-  <wc-table-row col="id"></wc-table-row>
-  <wc-table-row col="name"></wc-table-row>
-</wc-table>
+<wc-table data='[{"id":1,"name":"Alice"},{"id":2,"name":"Bob"}]'></wc-table>
 ```
 
 - The `data` attribute must be a valid **JSON array**.
@@ -145,6 +139,40 @@ Optional stylesheet (shadow `<link>` also loads `./wc-table.css` next to the mod
 
 The package ships a small React adapter that wraps `<wc-table>` and `<wc-table-row>`:
 
+## 5. Vue / Nuxt.Js (npm) + basic example
+ 
+nuxt.config.js
+```js
+export default {
+  vue: {
+    compilerOptions: {
+      isCustomElement: (tag) => tag.startsWith('wc-'),
+    },
+  },
+}
+```
+create a plugin: plugins/wc-table.client.ts
+
+```js
+import 'wc-tables-kit';
+
+export default { };
+```
+
+Use components
+```vue
+<template>
+  <wc-table 
+    stylesheet-url="/wc-table.css" 
+    :data="data" 
+    @action-click="({ detail }) => console.log(detail)"
+  >
+  </wc-table>
+</template>
+```
+
+
+    
 ### Install
 
 ```bash

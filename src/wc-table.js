@@ -1,4 +1,5 @@
 import { Config } from './config.js';
+import { defaultStyles } from './wc-table-css.js';
 import { DatePlugin } from './plugins/date.js';
 import { CurrencyPlugin } from './plugins/currency.js';
 import { BadgePlugin } from './plugins/badge.js';
@@ -459,30 +460,12 @@ class WcTable extends _HTMLElement {
         });
     }
 
-    /**
-     * Stylesheet for shadow DOM. Default: `./wc-table.css` next to this module (`import.meta.url`).
-     * Bundlers (Vite, etc.) often break that URL — set `stylesheet-url="/path/to/wc-table.css"` to load a static asset.
-     */
-    _resolveStylesheetHref() {
-        const override = this.getAttribute('stylesheet-url');
-        if (override != null && override !== '') {
-            const base =
-                typeof document !== 'undefined' && document.baseURI
-                    ? document.baseURI
-                    : typeof location !== 'undefined'
-                      ? location.href
-                      : 'http://localhost/';
-            try {
-                return new URL(override, base).href;
-            } catch {
-                return override;
-            }
-        }
-        return new URL('./wc-table.css', import.meta.url).href;
-    }
-
     render() {
-        const cssPath = this._resolveStylesheetHref();
+        const overrideCss = this.getAttribute('stylesheet-url');
+        const styleBlock = overrideCss 
+            ? `<link rel="stylesheet" href="${overrideCss}">` 
+            : `<style>\n${defaultStyles}\n</style>`;
+
         const hideSearch = this.hasAttribute('hide-search');
         const searchBlock = hideSearch
             ? ''
@@ -492,7 +475,7 @@ class WcTable extends _HTMLElement {
                         </div>`;
 
         this.shadowRoot.innerHTML = `
-            <link rel="stylesheet" href="${cssPath}">
+            ${styleBlock}
             <div class="table-wrapper">
                 <slot name="before"></slot>
                 <slot></slot> <!-- Used for wc-table-row elements -->
